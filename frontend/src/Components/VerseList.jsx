@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useCallback, useLayoutEffect } from 'react
 // import { ArrowUp, Loader } from 'lucide-react';
 import { FaArrowUp } from "react-icons/fa6";
 import { LuLoaderCircle } from "react-icons/lu";
-import logoquran from '/src/assets/logo-quran.svg';
+import logo from '/src/assets/logo.svg';
 import bismillah from '/src/assets/bismillah.svg';
 import ChapterNavigation from './ChapterNavigation';
 import VerseCard from './VerseCard';
@@ -192,8 +192,8 @@ function VerseList({
         artist: `Surah ${selectedChapter.name_simple}`,
         album: 'Al-Quran',
         artwork: [
-          { src: logoquran, sizes: '512x512', type: 'image/svg+xml' },
-          { src: logoquran, sizes: '96x96', type: 'image/svg+xml' }
+          { src: logo, sizes: '512x512', type: 'image/svg+xml' },
+          { src: logo, sizes: '96x96', type: 'image/svg+xml' }
         ]
       });
 
@@ -434,7 +434,7 @@ function VerseList({
         >
           {loading && verses.length > 0 && (
             <div className={`w-16 h-16 rounded-full flex items-center justify-center animate-pulse ${isLight ? 'bg-stone-300' : 'bg-gray-800'}`}>
-              <img src={logoquran} alt="Loading more verses" className="w-8 h-8 opacity-50" />
+              <img src={logo} alt="Loading more verses" className="w-8 h-8 opacity-50" />
             </div>
           )}
         </div>

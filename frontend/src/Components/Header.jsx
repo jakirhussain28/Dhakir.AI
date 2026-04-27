@@ -3,7 +3,7 @@ import { LuSettings } from "react-icons/lu";
 import { FaStop, FaPlay } from "react-icons/fa";
 import { HiDotsVertical } from "react-icons/hi";
 import { TiHomeOutline } from "react-icons/ti";
-import logoquran from '/src/assets/logo-quran.svg';
+import logo from '/src/assets/logo.svg';
 import DynamicBar from './DynamicBar';
 
 const Header = ({
@@ -72,7 +72,7 @@ const Header = ({
               onClick={handleLogoClick}
               className="hover:scale-105 active:scale-95 transition-transform cursor-pointer focus:outline-none flex items-center translate-x-0.5"
             >
-              <img src={logoquran} alt="Al-Qur'an Logo" className="w-10 h-10 block" />
+              <img src={logo} alt="Al-Qur'an Logo" className="w-10 h-10 block" />
             </button>
           )}
         </div>
@@ -83,7 +83,7 @@ const Header = ({
             onClick={handleLogoClick}
             className="hover:scale-105 active:scale-95 transition-transform cursor-pointer focus:outline-none flex items-center translate-x-0.5"
           >
-            <img src={logoquran} alt="Al-Qur'an Logo" className="w-11 h-11 block" />
+            <img src={logo} alt="Al-Qur'an Logo" className="w-11 h-11 block" />
           </button>
         </div>
       </div>
