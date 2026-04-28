@@ -1,10 +1,13 @@
 import { useState, useEffect, useRef } from 'react';
+import { FaRegUser, FaUser } from "react-icons/fa6";
 import { LuSettings } from "react-icons/lu";
 import { FaStop, FaPlay } from "react-icons/fa";
 import { HiDotsVertical } from "react-icons/hi";
 import { TiHomeOutline } from "react-icons/ti";
 import logo from '/src/assets/logo.svg';
 import DynamicBar from './DynamicBar';
+
+import { initiateLogin } from '../utils/auth';
 
 const Header = ({
   theme,
@@ -158,6 +161,15 @@ const Header = ({
           aria-label="Open Settings"
         >
           <LuSettings size={24} aria-hidden="true" />
+        </button>
+
+        {/* LOGIN BUTTON */}
+        <button
+          onClick={initiateLogin}
+          className={`hidden md:flex p-2 rounded-full transition-colors ${isLight ? 'hover:bg-stone-300 text-stone-700' : 'hover:bg-gray-700 text-gray-300'}`}
+          aria-label="Login to Quran.Foundation"
+        >
+          <FaRegUser size={20} aria-hidden="true" />
         </button>
       </div>
     </div>
