@@ -4,9 +4,11 @@ const CLIENT_ID = import.meta.env.VITE_QURAN_CLIENT_ID;
 const OAUTH_ENDPOINT = 'https://prelive-oauth2.quran.foundation/oauth2/auth';
 
 // Automatically handles local dev vs production environments
-const REDIRECT_URI = window.location.origin.includes('localhost')
-    ? 'http://localhost:5010/callback' // Matches your Vite port
-    : 'https://dhakir.pages.dev/callback';
+// const REDIRECT_URI = window.location.origin.includes('localhost')
+//     ? 'http://localhost:5010/callback' // Matches your Vite port
+//     : 'https://dhakir.pages.dev/callback';
+
+const REDIRECT_URI = 'https://dhakir.pages.dev/callback';
 
 // 1. Generate a random secure string
 const generateRandomString = (length) => {
