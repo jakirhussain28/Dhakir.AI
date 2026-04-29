@@ -4,11 +4,11 @@ const CLIENT_ID = import.meta.env.VITE_QURAN_CLIENT_ID;
 const OAUTH_ENDPOINT = 'https://prelive-oauth2.quran.foundation/oauth2/auth';
 
 // Automatically handles local dev vs production environments
-// const REDIRECT_URI = window.location.origin.includes('localhost')
-//     ? 'http://localhost:5010/callback' // Matches your Vite port
-//     : 'https://dhakir.pages.dev/callback';
+const REDIRECT_URI = window.location.origin.includes('localhost')
+    ? 'http://localhost:5010/callback' // Matches your Vite port
+    : 'https://dhakir.pages.dev/callback';
 
-const REDIRECT_URI = 'https://dhakir.pages.dev/callback';
+// const REDIRECT_URI = 'https://dhakir.pages.dev/callback';
 
 // 1. Generate a random secure string
 const generateRandomString = (length) => {
@@ -30,6 +30,7 @@ const generateCodeChallenge = async (codeVerifier) => {
 };
 
 // 3. The function your button will call
+// 3. The function your button will call
 export const initiateLogin = async () => {
     if (!CLIENT_ID) {
         console.error("Missing VITE_QURAN_CLIENT_ID in .env file");
@@ -38,8 +39,13 @@ export const initiateLogin = async () => {
 
     const codeVerifier = generateRandomString(64);
 
-    // Save verifier to localStorage so Callback.jsx can use it later
+    // NEW: Generate state and nonce (must be at least 8 chars)
+    const state = generateRandomString(16);
+    const nonce = generateRandomString(16);
+
+    // Save verifier and state to localStorage so Callback.jsx can use them later
     localStorage.setItem('pkce_code_verifier', codeVerifier);
+    localStorage.setItem('oauth_state', state); // Save state to verify upon return
 
     const codeChallenge = await generateCodeChallenge(codeVerifier);
 
@@ -50,7 +56,11 @@ export const initiateLogin = async () => {
     authUrl.searchParams.append('redirect_uri', REDIRECT_URI);
     authUrl.searchParams.append('code_challenge', codeChallenge);
     authUrl.searchParams.append('code_challenge_method', 'S256');
-    authUrl.searchParams.append('scope', 'openid profile email');
+    authUrl.searchParams.append('scope', 'openid user bookmark offline_access');
+
+    // NEW: Append the required state and nonce parameters
+    authUrl.searchParams.append('state', state);
+    authUrl.searchParams.append('nonce', nonce);
 
     // Redirect the browser!
     window.location.href = authUrl.toString();
