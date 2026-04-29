@@ -123,7 +123,7 @@ function App() {
 
   // --- UPDATED ANALYTICS LOGIC ---
   useEffect(() => {
-    let title = "Home | DHAKIR";
+    let title = "DHAKIR";
     let path = '/';
     let chapterName = 'Home';
 
