@@ -4,6 +4,7 @@ import Header from './Components/Header';
 import InitialScreen from './Components/InitialScreen';
 import { fetchWithCache, DB_STORES } from './utils/db';
 import { fetchChapters, fetchVerses } from './utils/api';
+import brandLogo from './assets/brandLogo.svg';
 
 // IMPORT ANALYTICS
 import { logAnalyticsEvent } from './firebase';
@@ -64,6 +65,8 @@ function App() {
   const [fetchKey, setFetchKey] = useState(0); // bump to force verse refetch
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isInfoOpen, setIsInfoOpen] = useState(false);
+  const [showSplash, setShowSplash] = useState(true);
+  const [isFadingOut, setIsFadingOut] = useState(false);
 
   const [theme, setTheme] = useState(() => localStorage.getItem('app-theme') || 'light');
 
@@ -93,6 +96,15 @@ function App() {
   useEffect(() => { localStorage.setItem('app-showTransliteration', showTransliteration); }, [showTransliteration]);
   useEffect(() => { localStorage.setItem('app-onlyTranslation', onlyTranslation); }, [onlyTranslation]);
   useEffect(() => { localStorage.setItem('app-fontSize', fontSize); }, [fontSize]);
+
+  useEffect(() => {
+    const fadeTimer = setTimeout(() => setIsFadingOut(true), 500);
+    const removeTimer = setTimeout(() => setShowSplash(false), 800); // 500 + 300 duration
+    return () => {
+      clearTimeout(fadeTimer);
+      clearTimeout(removeTimer);
+    };
+  }, []);
 
   // Persist last-read page (scoped to the current chapter)
   useEffect(() => {
@@ -393,6 +405,27 @@ function App() {
 
   return (
     <div className={`flex h-screen font-sans overflow-hidden transition-colors duration-300 ${mainBgClass}`}>
+      {/* Splash Screen for Mobile/Tablet */}
+      {showSplash && (
+        <div className={`fixed inset-0 z-[100] flex flex-col items-center justify-center lg:hidden ${mainBgClass} transition-opacity duration-300 ease-in-out ${isFadingOut ? 'opacity-0' : 'opacity-100'}`}>
+          <span className="font-serif tracking-widest text-sm mb-4">WELCOME</span>
+          <img
+            src={brandLogo}
+            alt="Dhakir Logo"
+            className="w-56 sm:w-64 h-auto opacity-90"
+            style={{ filter: !isLight ? 'brightness(0) invert(1)' : 'none' }}
+          />
+        </div>
+      )}
+
+      {/* Top-left logo for Desktop */}
+      {(!selectedChapter || isHomeView) && (
+        <div className="fixed top-0 left-4 z-[60] pointer-events-none select-none hidden lg:block">
+          <img src={brandLogo} alt="Dhakir Logo" className="h-18 w-auto opacity-90"
+            style={{ filter: !isLight ? 'brightness(0) invert(1)' : 'none' }}
+          />
+        </div>
+      )}
       <Header
         theme={theme}
         audioStatus={audioStatus}
