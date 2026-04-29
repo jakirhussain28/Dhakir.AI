@@ -1,10 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
 import ChapterDropdown from './ChapterDropdown';
 import VerseDropdown from './VerseDropdown';
-import { TiHomeOutline } from "react-icons/ti";
+import { HiOutlineInformationCircle } from "react-icons/hi2";
 import { LuSettings } from "react-icons/lu";
 
-function DynamicBar({ chapters, selectedChapter, onSelect, onVerseJump, isMobileMenuOpen, onHomeClick, onSettingsClick }) {
+function DynamicBar({ chapters, selectedChapter, onSelect, onVerseJump, isMobileMenuOpen, onInfoClick, onSettingsClick }) {
   const [isChapterView, setIsChapterView] = useState(false);
   const [isVerseView, setIsVerseView] = useState(false);
 
@@ -149,12 +149,12 @@ function DynamicBar({ chapters, selectedChapter, onSelect, onVerseJump, isMobile
               : 'opacity-0 scale-105 pointer-events-none'}
           `}>
             <button
-              onClick={(e) => { e.stopPropagation(); onHomeClick?.(); }}
+              onClick={(e) => { e.stopPropagation(); onInfoClick?.(); }}
               className="mobile-nav-btn flex items-center justify-center gap-2 text-gray-300 hover:text-white transition-colors w-full h-full"
-              aria-label="Home"
+              aria-label="Info"
             >
-              <TiHomeOutline size={22} />
-              <span className="text-sm font-medium">Home</span>
+              <HiOutlineInformationCircle size={22} />
+              <span className="text-sm font-medium">Info</span>
             </button>
 
             <div className="w-[1px] h-5 bg-white/10 shrink-0"></div>

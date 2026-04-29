@@ -4,7 +4,7 @@ import { LuSettings } from "react-icons/lu";
 import { FaStop, FaPlay } from "react-icons/fa";
 import { HiDotsVertical } from "react-icons/hi";
 import { TiHomeOutline } from "react-icons/ti";
-import logo from '/src/assets/logo.svg';
+import { HiOutlineInformationCircle } from "react-icons/hi2";
 import DynamicBar from './DynamicBar';
 
 import { initiateLogin } from '../utils/auth';
@@ -59,7 +59,7 @@ const Header = ({
                     px-1 py-2 lg:px-2 lg:py-2 pt-1
                     flex items-center justify-between gap-0.5 transition-all duration-300 ${headerBgClass}`}>
 
-      {/* LEFT: LOGO */}
+      {/* LEFT: HOME */}
       <div className="w-10 md:w-auto shrink-0 flex items-center justify-start z-20">
         <div className="md:hidden">
           {audioStatus !== 'idle' ? (
@@ -72,23 +72,23 @@ const Header = ({
             </button>
           ) : (
             <button
-              onClick={handleLogoClick}
-              className="hover:scale-105 active:scale-95 transition-transform cursor-pointer focus:outline-none flex items-center translate-x-0.5"
+              onClick={onHomeClick}
+              className={`p-2 pt-2.5 rounded-full transition-colors ${isLight ? 'hover:bg-stone-300 text-stone-700' : 'hover:bg-gray-700 text-gray-300'}`}
+              aria-label="Home"
             >
-              <img src={logo} alt="Al-Qur'an Logo" className="w-10 h-10 block" />
+              <TiHomeOutline size={22} aria-hidden="true" />
             </button>
           )}
         </div>
 
-        {/* Desktop Logo */}
-        <div className="hidden md:block">
-          <button
-            onClick={handleLogoClick}
-            className="hover:scale-105 active:scale-95 transition-transform cursor-pointer focus:outline-none flex items-center translate-x-0.5"
-          >
-            <img src={logo} alt="Al-Qur'an Logo" className="w-11 h-11 block" />
-          </button>
-        </div>
+        {/* Desktop Home */}
+        <button
+          onClick={onHomeClick}
+          className={`hidden md:flex p-2 rounded-full transition-colors ${isLight ? 'hover:bg-stone-300 text-stone-700' : 'hover:bg-gray-700 text-gray-300'}`}
+          aria-label="Home"
+        >
+          <TiHomeOutline size={24} aria-hidden="true" />
+        </button>
       </div>
 
       {/* CENTER: DYNAMIC BAR */}
@@ -121,9 +121,9 @@ const Header = ({
                 onSelect={handleChapterSelect}
                 onVerseJump={handleVerseJump}
                 isMobileMenuOpen={isMobileMenuOpen}
-                onHomeClick={() => {
+                onInfoClick={() => {
                   setIsMobileMenuOpen(false);
-                  onHomeClick();
+                  handleLogoClick();
                 }}
                 onSettingsClick={() => {
                   setIsMobileMenuOpen(false);
@@ -149,11 +149,11 @@ const Header = ({
 
         {/* Desktop: individual buttons */}
         <button
-          onClick={onHomeClick}
-          className={`hidden md:flex p-2 rounded-full transition-colors ${isLight ? 'hover:bg-stone-300 text-stone-700' : 'hover:bg-gray-700 text-gray-300'}`}
-          aria-label="Go to Home"
+          onClick={handleLogoClick}
+          className={`hidden md:flex p-1.5 rounded-full transition-colors ${isLight ? 'hover:bg-stone-300 text-stone-700' : 'hover:bg-gray-700 text-gray-300'}`}
+          aria-label="Surah Info"
         >
-          <TiHomeOutline size={24} aria-hidden="true" />
+          <HiOutlineInformationCircle size={28} aria-hidden="true" />
         </button>
         <button
           onClick={() => setIsSettingsOpen(true)}
