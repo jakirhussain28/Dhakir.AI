@@ -20,7 +20,8 @@ const Header = ({
   chapters,
   handleChapterSelect,
   handleVerseJump,
-  setIsSettingsOpen
+  setIsSettingsOpen,
+  isInitialScreen
 }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const headerRef = useRef(null);
@@ -69,6 +70,14 @@ const Header = ({
               className={`w-8 h-8 rounded-full translate-x-1 flex items-center justify-center animate-in fade-in zoom-in duration-200 ${controlBtnClass}`}
             >
               {audioStatus === 'playing' ? <FaStop size={16} fill="currentColor" aria-hidden="true" /> : <FaPlay size={16} fill="currentColor" className="ml-0.5" aria-hidden="true" />}
+            </button>
+          ) : isInitialScreen ? (
+            <button
+              onClick={initiateLogin}
+              className={`p-2 pt-2.5 rounded-full transition-colors ${isLight ? 'hover:bg-stone-300 text-stone-700' : 'hover:bg-gray-700 text-gray-300'}`}
+              aria-label="Login via Quran.Foundation"
+            >
+              <FaRegUser size={18} aria-hidden="true" />
             </button>
           ) : (
             <button
@@ -167,7 +176,7 @@ const Header = ({
         <button
           onClick={initiateLogin}
           className={`hidden md:flex p-2 rounded-full transition-colors ${isLight ? 'hover:bg-stone-300 text-stone-700' : 'hover:bg-gray-700 text-gray-300'}`}
-          aria-label="Login to Quran.Foundation"
+          aria-label="Login via Quran.Foundation"
         >
           <FaRegUser size={20} aria-hidden="true" />
         </button>

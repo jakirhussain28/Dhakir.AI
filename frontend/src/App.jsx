@@ -438,6 +438,7 @@ function App() {
         handleChapterSelect={handleChapterSelect}
         handleVerseJump={handleVerseJump}
         setIsSettingsOpen={setIsSettingsOpen}
+        isInitialScreen={!selectedChapter || isHomeView}
       />
 
       <main className="flex-1 h-full flex flex-col overflow-hidden relative">
