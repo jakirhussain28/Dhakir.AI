@@ -15,8 +15,8 @@ load_dotenv()
 from Quran_Guide import generate_quran_guidance
 
 app = FastAPI(
-    title="Quran Guidance API",
-    description="An API that returns a relevant Quranic verse based on user emotions or questions.",
+    title="Dhakir API",
+    description="An API that returns a relevant Quranic verse based on user emotions or questions and manages authentication.",
     version="1.0.0"
 )
 

@@ -9,7 +9,7 @@
 @layer base {
   body {
     @apply bg-[rgb(22,23,24)] text-[rgb(252,252,252)] overflow-x-hidden; 
-    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    /* font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; */
   }
 }
 
