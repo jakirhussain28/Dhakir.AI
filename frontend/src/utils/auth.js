@@ -58,10 +58,57 @@ export const initiateLogin = async () => {
     authUrl.searchParams.append('code_challenge_method', 'S256');
     authUrl.searchParams.append('scope', 'openid user bookmark offline_access');
 
-    // NEW: Append the required state and nonce parameters
+    // Append the required state and nonce parameters
     authUrl.searchParams.append('state', state);
     authUrl.searchParams.append('nonce', nonce);
 
+    // Force the login screen to appear every time (prevents auto-login with stale session)
+    authUrl.searchParams.append('prompt', 'login');
+
     // Redirect the browser!
     window.location.href = authUrl.toString();
+};
+
+// 4. Token management and Retrieval
+export const getAccessToken = () => localStorage.getItem('access_token');
+export const getIdToken = () => localStorage.getItem('id_token');
+
+export const isAuthenticated = () => {
+    const expiresAt = localStorage.getItem('token_expires_at');
+    if (!expiresAt) return false;
+    return Date.now() < parseInt(expiresAt, 10);
+};
+
+export const logout = () => {
+    // Clear all auth-related data from localStorage
+    localStorage.removeItem('access_token');
+    localStorage.removeItem('id_token');
+    localStorage.removeItem('token_expires_at');
+    localStorage.removeItem('refresh_token');
+    localStorage.removeItem('oauth_state');
+    localStorage.removeItem('pkce_code_verifier');
+
+    // Redirect to the correct app root
+    const homeUrl = window.location.origin.includes('localhost')
+        ? 'http://localhost:5010/'
+        : 'https://dhakir.pages.dev/';
+
+    window.location.href = homeUrl;
+};
+
+export const getUserProfile = () => {
+    const token = getIdToken();
+    if (!token) return null;
+    
+    try {
+        const payloadBase64 = token.split('.')[1];
+        if (!payloadBase64) return null;
+        
+        // Decode base64url to string
+        const decodedJson = atob(payloadBase64.replace(/-/g, '+').replace(/_/g, '/'));
+        return JSON.parse(decodedJson);
+    } catch (e) {
+        console.error('Error decoding id_token', e);
+        return null;
+    }
 };

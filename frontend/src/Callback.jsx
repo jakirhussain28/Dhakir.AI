@@ -1,15 +1,22 @@
 import { useEffect, useState, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { LuLoaderCircle } from "react-icons/lu";
+import brandLogo from './assets/brandLogo.svg';
 
 function Callback() {
     const [searchParams] = useSearchParams();
     const navigate = useNavigate();
-    const [status, setStatus] = useState("Authenticating...");
+    const [hasError, setHasError] = useState(false);
+    const [errorMsg, setErrorMsg] = useState('');
     const hasFetched = useRef(false);
 
-    // This URL will point to your Vercel FastAPI backend
-    const BACKEND_API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+    // Read the user's theme preference from localStorage
+    const theme = localStorage.getItem('app-theme') || 'light';
+    const isLight = theme === 'light';
+
+    // Use localhost backend when on localhost to avoid CORS issues with LAN IP
+    const BACKEND_API_URL = window.location.hostname === 'localhost'
+        ? 'http://localhost:8000'
+        : (import.meta.env.VITE_API_URL || 'http://localhost:8000');
 
     useEffect(() => {
         // Prevent React strict mode double-firing
@@ -18,16 +25,27 @@ function Callback() {
 
         const handleCallback = async () => {
             const code = searchParams.get('code');
+            const state = searchParams.get('state');
             const error = searchParams.get('error');
 
             if (error) {
-                setStatus(`Authentication failed: ${error}`);
+                setHasError(true);
+                setErrorMsg(`Authentication failed: ${error}`);
                 setTimeout(() => navigate('/'), 3000);
                 return;
             }
 
             if (!code) {
-                setStatus("Invalid request: No authorization code found.");
+                setHasError(true);
+                setErrorMsg('No authorization code found.');
+                setTimeout(() => navigate('/'), 3000);
+                return;
+            }
+
+            const savedState = localStorage.getItem('oauth_state');
+            if (!state || state !== savedState) {
+                setHasError(true);
+                setErrorMsg('State mismatch. Please try again.');
                 setTimeout(() => navigate('/'), 3000);
                 return;
             }
@@ -36,7 +54,8 @@ function Callback() {
             const codeVerifier = localStorage.getItem('pkce_code_verifier');
 
             if (!codeVerifier) {
-                setStatus("Authentication failed: Missing PKCE verifier.");
+                setHasError(true);
+                setErrorMsg('Missing PKCE verifier. Please try again.');
                 setTimeout(() => navigate('/'), 3000);
                 return;
             }
@@ -47,8 +66,6 @@ function Callback() {
                 : 'https://dhakir.pages.dev/callback';
 
             try {
-                setStatus("Exchanging secure token...");
-
                 const response = await fetch(`${BACKEND_API_URL}/api/auth/callback`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -62,24 +79,33 @@ function Callback() {
                 if (!response.ok) {
                     const errData = await response.json();
                     console.error("Backend Error:", errData);
-                    throw new Error('Backend failed to exchange token');
+                    throw new Error(errData.detail || 'Token exchange failed');
                 }
 
                 const data = await response.json();
-                console.log("🎉 SUCCESS! Data from FastAPI:", data);
 
-                // Let's temporarily increase the delay to 5 seconds so you can read the console
-                setStatus("Success! Check your browser console.");
+                if (data.status === 'success' && data.session) {
+                    localStorage.setItem('access_token', data.session.access_token);
+                    if (data.session.id_token) {
+                        localStorage.setItem('id_token', data.session.id_token);
+                    }
+                    if (data.session.expires_in) {
+                        const expiresAt = Date.now() + (data.session.expires_in * 1000);
+                        localStorage.setItem('token_expires_at', expiresAt.toString());
+                    }
+                }
+
                 localStorage.removeItem('pkce_code_verifier');
+                localStorage.removeItem('oauth_state');
 
-                setTimeout(() => {
-                    navigate('/');
-                }, 5000); // Increased from 1000 to 5000
+                // Navigate home after successful login
+                setTimeout(() => navigate('/'), 1000);
 
             } catch (err) {
-                console.error(err);
-                setStatus("Something went wrong communicating with the server.");
-                setTimeout(() => navigate('/'), 3000);
+                console.error("Token exchange error:", err.message, err);
+                setHasError(true);
+                setErrorMsg(err.message || 'Something went wrong.');
+                setTimeout(() => navigate('/'), 4000);
             }
         };
 
@@ -87,10 +113,28 @@ function Callback() {
     }, [searchParams, navigate, BACKEND_API_URL]);
 
     return (
-        <div className="flex flex-col items-center justify-center h-screen bg-[#1a1b1d] text-gray-200">
-            <LuLoaderCircle size={40} className="animate-spin text-emerald-500 mb-4" />
-            <h2 className="text-xl font-medium">{status}</h2>
-            <p className="text-sm text-gray-500 mt-2">Please wait while we securely log you in.</p>
+        <div className={`fixed inset-0 z-[100] flex flex-col items-center justify-center transition-colors duration-300
+            ${isLight ? 'bg-[#f5f5f0]' : 'bg-[rgb(22,22,24)]'}`}>
+            {/* Logo */}
+            <img
+                src={brandLogo}
+                alt="Dhakir Logo"
+                className="w-52 sm:w-60 h-auto mb-8 opacity-90"
+                style={{ filter: isLight ? 'none' : 'brightness(0) invert(1)' }}
+            />
+
+            {/* Spinner */}
+            <div className={`w-6 h-6 border-2 rounded-full animate-spin mb-5
+                ${isLight ? 'border-stone-300 border-t-emerald-600' : 'border-gray-600 border-t-emerald-500'}`} />
+
+            {/* Status text */}
+            {hasError ? (
+                <p className="text-sm text-red-500 text-center px-6 max-w-xs">{errorMsg}</p>
+            ) : (
+                <p className={`text-sm tracking-wide ${isLight ? 'text-stone-400' : 'text-gray-500'}`}>
+                    Please wait while we securely log you in.
+                </p>
+            )}
         </div>
     );
 }

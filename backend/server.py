@@ -80,23 +80,30 @@ async def auth_callback(request: AuthCallbackRequest):
     token_url = "https://prelive-oauth2.quran.foundation/oauth2/token"
     
     # Construct the payload required for the token exchange
+    # NOTE: client_id/client_secret are sent via HTTP Basic Auth header (client_secret_basic)
     payload = {
         "grant_type": "authorization_code",
-        "client_id": client_id,
-        "client_secret": client_secret,
         "code": request.code,
         "code_verifier": request.code_verifier,
         "redirect_uri": request.redirect_uri
     }
 
     try:
-        # Make a secure server-to-server request
+        # Make a secure server-to-server request with Basic Auth
         async with httpx.AsyncClient() as client:
-            response = await client.post(token_url, data=payload)
+            response = await client.post(
+                token_url, 
+                data=payload,
+                auth=(client_id, client_secret)
+            )
             
             if response.status_code != 200:
-                print("OAuth2 Error:", response.text)
-                raise HTTPException(status_code=400, detail="Invalid authorization code or URI mismatch.")
+                error_detail = response.text
+                print(f"OAuth2 Error (status {response.status_code}):", error_detail)
+                raise HTTPException(
+                    status_code=400, 
+                    detail=f"Token exchange failed (status {response.status_code}): {error_detail}"
+                )
             
             token_data = response.json()
             
@@ -106,11 +113,13 @@ async def auth_callback(request: AuthCallbackRequest):
                 "session": {
                     "access_token": token_data.get("access_token"),
                     "id_token": token_data.get("id_token"),
-                    "expires_in": token_data.get("expires_in")
+                    "expires_in": token_data.get("expires_in"),
+                    "refresh_token": token_data.get("refresh_token")
                 }
             }
             
     except httpx.RequestError as e:
+        print(f"Network error communicating with Auth server: {str(e)}")
         raise HTTPException(status_code=502, detail=f"Failed to communicate with Auth server: {str(e)}")
 
 if __name__ == "__main__":

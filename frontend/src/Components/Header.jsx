@@ -6,8 +6,9 @@ import { HiDotsVertical } from "react-icons/hi";
 import { TiHomeOutline } from "react-icons/ti";
 import { HiOutlineInformationCircle } from "react-icons/hi2";
 import DynamicBar from './DynamicBar';
+import UserMenuModal from './UserMenuModal';
 
-import { initiateLogin } from '../utils/auth';
+import { initiateLogin, isAuthenticated } from '../utils/auth';
 
 const Header = ({
   theme,
@@ -24,7 +25,9 @@ const Header = ({
   isInitialScreen
 }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const headerRef = useRef(null);
+  const loggedIn = isAuthenticated();
 
   // Close mobile menu when clicking outside the header
   useEffect(() => {
@@ -73,11 +76,11 @@ const Header = ({
             </button>
           ) : isInitialScreen ? (
             <button
-              onClick={initiateLogin}
+              onClick={loggedIn ? () => setIsUserMenuOpen(true) : initiateLogin}
               className={`p-2 pt-2.5 rounded-full transition-colors ${isLight ? 'hover:bg-stone-300 text-stone-700' : 'hover:bg-gray-700 text-gray-300'}`}
-              aria-label="Login via Quran.Foundation"
+              aria-label={loggedIn ? 'User Menu' : 'Login via Quran.Foundation'}
             >
-              <FaRegUser size={18} aria-hidden="true" />
+              {loggedIn ? <FaUser size={18} aria-hidden="true" /> : <FaRegUser size={18} aria-hidden="true" />}
             </button>
           ) : (
             <button
@@ -172,15 +175,22 @@ const Header = ({
           <LuSettings size={24} aria-hidden="true" />
         </button>
 
-        {/* LOGIN BUTTON */}
+        {/* LOGIN / USER MENU BUTTON */}
         <button
-          onClick={initiateLogin}
+          onClick={loggedIn ? () => setIsUserMenuOpen(true) : initiateLogin}
           className={`hidden md:flex p-2 rounded-full transition-colors ${isLight ? 'hover:bg-stone-300 text-stone-700' : 'hover:bg-gray-700 text-gray-300'}`}
-          aria-label="Login via Quran.Foundation"
+          aria-label={loggedIn ? 'User Menu' : 'Login via Quran.Foundation'}
         >
-          <FaRegUser size={20} aria-hidden="true" />
+          {loggedIn ? <FaUser size={20} aria-hidden="true" /> : <FaRegUser size={20} aria-hidden="true" />}
         </button>
       </div>
+
+      {/* User Menu Modal */}
+      <UserMenuModal
+        isOpen={isUserMenuOpen}
+        onClose={() => setIsUserMenuOpen(false)}
+        theme={theme}
+      />
     </div>
   );
 };
