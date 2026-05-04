@@ -160,13 +160,15 @@ const Header = ({
         </button>
 
         {/* Desktop: individual buttons */}
-        <button
-          onClick={handleLogoClick}
-          className={`hidden md:flex p-1.5 rounded-full transition-colors ${isLight ? 'hover:bg-stone-300 text-stone-700' : 'hover:bg-gray-700 text-gray-300'}`}
-          aria-label="Surah Info"
-        >
-          <HiOutlineInformationCircle size={28} aria-hidden="true" />
-        </button>
+        {!isInitialScreen && (
+          <button
+            onClick={handleLogoClick}
+            className={`hidden md:flex p-1.5 rounded-full transition-colors ${isLight ? 'hover:bg-stone-300 text-stone-700' : 'hover:bg-gray-700 text-gray-300'}`}
+            aria-label="Surah Info"
+          >
+            <HiOutlineInformationCircle size={28} aria-hidden="true" />
+          </button>
+        )}
         <button
           onClick={() => setIsSettingsOpen(true)}
           className={`hidden md:flex p-2 rounded-full transition-colors ${isLight ? 'hover:bg-stone-300 text-stone-700' : 'hover:bg-gray-700 text-gray-300'}`}
