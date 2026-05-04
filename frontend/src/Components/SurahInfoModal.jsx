@@ -11,7 +11,8 @@ function SurahInfoModal({
 }) {
   const [info, setInfo] = useState(null);
   const [loading, setLoading] = useState(false);
-  const QURAN_API = 'https://api.quran.com/api/v4';
+  const BACKEND_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+  const QURAN_API = `${BACKEND_URL}/content/api/v4`;
 
   useEffect(() => {
     if (isOpen) {
