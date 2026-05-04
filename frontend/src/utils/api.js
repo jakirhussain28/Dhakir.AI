@@ -67,3 +67,35 @@ export const fetchVerses = async (chapterId, page) => {
   
   return cleanVerseData(rawData, scriptType);
 };
+
+// API: User APIs (Requires Authentication)
+export const fetchUserApi = async (endpoint, options = {}) => {
+  const token = localStorage.getItem('access_token');
+  if (!token) {
+    throw new Error("No access token found. User must be logged in.");
+  }
+
+  const headers = {
+    ...options.headers,
+    'Authorization': `Bearer ${token}`,
+    'Content-Type': options.body instanceof FormData ? undefined : 'application/json'
+  };
+
+  // Remove Content-Type if it's undefined (fetch sets it automatically for FormData)
+  if (headers['Content-Type'] === undefined) {
+    delete headers['Content-Type'];
+  }
+
+  const res = await fetch(`https://prelive-api.quran.foundation${endpoint}`, {
+    ...options,
+    headers
+  });
+
+  if (!res.ok) {
+    throw new Error(`API request failed with status: ${res.status}`);
+  }
+
+  // Handle empty responses
+  if (res.status === 204) return null;
+  return res.json();
+};

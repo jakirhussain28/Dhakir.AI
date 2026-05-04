@@ -43,6 +43,9 @@ class AuthCallbackRequest(BaseModel):
     code_verifier: str
     redirect_uri: str
 
+class RefreshTokenRequest(BaseModel):
+    refresh_token: str
+
 # --- ENDPOINTS ---
 @app.get("/")   
 async def health_check():
@@ -108,6 +111,54 @@ async def auth_callback(request: AuthCallbackRequest):
             token_data = response.json()
             
             # Return the access_token and id_token to the React frontend
+            return {
+                "status": "success",
+                "session": {
+                    "access_token": token_data.get("access_token"),
+                    "id_token": token_data.get("id_token"),
+                    "expires_in": token_data.get("expires_in"),
+                    "refresh_token": token_data.get("refresh_token")
+                }
+            }
+            
+    except httpx.RequestError as e:
+        print(f"Network error communicating with Auth server: {str(e)}")
+        raise HTTPException(status_code=502, detail=f"Failed to communicate with Auth server: {str(e)}")
+
+# NEW: OAuth2 Refresh Token Endpoint
+@app.post("/api/auth/refresh")
+async def refresh_token(request: RefreshTokenRequest):
+    client_id = os.environ.get('QURAN_CLIENT_ID')
+    client_secret = os.environ.get('QURAN_CLIENT_SECRET')
+
+    if not client_id or not client_secret:
+        raise HTTPException(status_code=500, detail="Server OAuth configuration is missing.")
+
+    token_url = "https://prelive-oauth2.quran.foundation/oauth2/token"
+    
+    payload = {
+        "grant_type": "refresh_token",
+        "refresh_token": request.refresh_token
+    }
+
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                token_url, 
+                data=payload,
+                auth=(client_id, client_secret)
+            )
+            
+            if response.status_code != 200:
+                error_detail = response.text
+                print(f"OAuth2 Refresh Error (status {response.status_code}):", error_detail)
+                raise HTTPException(
+                    status_code=400, 
+                    detail=f"Token refresh failed (status {response.status_code}): {error_detail}"
+                )
+            
+            token_data = response.json()
+            
             return {
                 "status": "success",
                 "session": {

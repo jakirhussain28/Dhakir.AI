@@ -85,10 +85,28 @@ function Callback() {
                 const data = await response.json();
 
                 if (data.status === 'success' && data.session) {
-                    localStorage.setItem('access_token', data.session.access_token);
                     if (data.session.id_token) {
-                        localStorage.setItem('id_token', data.session.id_token);
+                        try {
+                            const payloadBase64 = data.session.id_token.split('.')[1];
+                            const decodedJson = atob(payloadBase64.replace(/-/g, '+').replace(/_/g, '/'));
+                            const payload = JSON.parse(decodedJson);
+                            
+                            const savedNonce = localStorage.getItem('oauth_nonce');
+                            if (payload.nonce !== savedNonce) {
+                                throw new Error('Nonce mismatch in ID Token.');
+                            }
+                            localStorage.setItem('id_token', data.session.id_token);
+                        } catch (e) {
+                            console.error('ID Token validation error:', e);
+                            throw new Error('ID Token validation failed.');
+                        }
                     }
+
+                    localStorage.setItem('access_token', data.session.access_token);
+                    if (data.session.refresh_token) {
+                        localStorage.setItem('refresh_token', data.session.refresh_token);
+                    }
+                    
                     if (data.session.expires_in) {
                         const expiresAt = Date.now() + (data.session.expires_in * 1000);
                         localStorage.setItem('token_expires_at', expiresAt.toString());
@@ -97,6 +115,7 @@ function Callback() {
 
                 localStorage.removeItem('pkce_code_verifier');
                 localStorage.removeItem('oauth_state');
+                localStorage.removeItem('oauth_nonce');
 
                 // Navigate home after successful login
                 setTimeout(() => navigate('/'), 1000);

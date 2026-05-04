@@ -43,9 +43,10 @@ export const initiateLogin = async () => {
     const state = generateRandomString(16);
     const nonce = generateRandomString(16);
 
-    // Save verifier and state to localStorage so Callback.jsx can use them later
+    // Save verifier, state, and nonce to localStorage so Callback.jsx can use them later
     localStorage.setItem('pkce_code_verifier', codeVerifier);
     localStorage.setItem('oauth_state', state); // Save state to verify upon return
+    localStorage.setItem('oauth_nonce', nonce); // Save nonce to verify id_token claims
 
     const codeChallenge = await generateCodeChallenge(codeVerifier);
 
@@ -87,6 +88,7 @@ export const logout = () => {
     localStorage.removeItem('refresh_token');
     localStorage.removeItem('oauth_state');
     localStorage.removeItem('pkce_code_verifier');
+    localStorage.removeItem('oauth_nonce');
 
     // Redirect to the correct app root
     const homeUrl = window.location.origin.includes('localhost')
