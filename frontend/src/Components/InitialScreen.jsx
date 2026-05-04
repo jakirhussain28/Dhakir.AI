@@ -14,7 +14,7 @@ function ActionCard({ onClick, isLight, ariaLabel, icon, label, subtitle, subtit
             onClick={onClick}
             aria-label={ariaLabel}
             className={`
-        group flex items-center gap-3 px-4 py-3.5 rounded-2xl border transition-all duration-200
+        w-full group flex items-center gap-3 px-4 py-3.5 rounded-2xl border transition-all duration-200
         hover:scale-[1.02] active:scale-[0.98] shadow-sm text-left min-w-0
         ${isLight
                     ? accent
@@ -384,23 +384,88 @@ function GuidanceBox({ isLight, onGoToVerse }) {
     );
 }
 
+/* ── STREAK BOX ────────────────────────────────────────────────── */
+function StreakBox({ isLight }) {
+    const streakDays = 1;
+    const progressPercent = 34;
+    const dailyGoal = 10; // minutes
+
+    return (
+        <div className={`
+            flex items-center justify-between px-4 py-3.5 rounded-2xl border w-full h-full
+            ${isLight ? 'bg-white border-stone-200 shadow-sm' : 'bg-[#1a1b1d] border-white/5 shadow-md'}
+        `}>
+            {/* Left side: Streak */}
+            <div className="flex items-center gap-3">
+                <div className={`w-[3.25rem] h-10 rounded-xl flex items-center justify-center shrink-0
+                    ${isLight ? 'bg-emerald-50' : 'bg-emerald-900/20'}`}
+                >
+                    <span className={`text-3xl font-semibold ${isLight ? 'text-stone-500' : 'text-gray-300'}`}>
+                        {streakDays}
+                    </span>
+                </div>
+                <span className={`text-[12px] font-bold uppercase tracking-wider ${isLight ? 'text-stone-500' : 'text-gray-400'}`}>
+                    Day Streak
+                </span>
+            </div>
+
+            {/* Right side: Goal Progress */}
+            <div className="flex flex-col items-end gap-1.5 w-[130px] sm:w-[150px] shrink-0">
+                <span className={`text-[12px] font-medium whitespace-nowrap ${isLight ? 'text-stone-600' : 'text-gray-400'}`}>
+                    Daily Goal: &nbsp;{dailyGoal} minutes
+                </span>
+                <div className={`w-full h-3.5 rounded-full overflow-hidden border flex items-center relative
+                    ${isLight ? 'border-stone-500 bg-white' : 'border-gray-500 bg-[#1a1b1d]'}`}
+                >
+                    <div
+                        className={`h-full ${isLight ? 'bg-stone-500' : 'bg-gray-500'}`}
+                        style={{ width: `${progressPercent}%` }}
+                    />
+                    <span className={`absolute inset-0 flex items-center text-[10px] font-bold z-10
+                        ${isLight ? 'text-stone-600' : 'text-gray-300'}`}
+                        style={{
+                            left: `${progressPercent}%`,
+                            paddingLeft: '6px'
+                        }}
+                    >
+                        {progressPercent}%
+                    </span>
+                </div>
+            </div>
+        </div>
+    );
+}
+
 /* ── INITIAL SCREEN ────────────────────────────────────────────── */
 function InitialScreen({ theme, lastChapter, onContinue, loadingChapters, bookmark, onGoToBookmark, onGoToVerse }) {
     const isLight = theme === 'light';
-    const showActions = lastChapter || bookmark;
 
     return (
         <div className="h-full flex flex-col items-center justify-center gap-5 px-4 select-none">
+
+            {/* BOOKMARK BOX */}
+            {bookmark && (
+                <div className="w-full max-w-sm sm:max-w-2xl">
+                    <ActionCard
+                        onClick={onGoToBookmark}
+                        isLight={isLight}
+                        ariaLabel={`Bookmark: ${bookmark.verseKey}`}
+                        icon={<BsBookmark />}
+                        label="Bookmarks"
+                        subtitle={bookmark.chapter?.name_simple}
+                        accent={true}
+                    />
+                </div>
+            )}
 
             {/* AI GUIDANCE BOX */}
             <GuidanceBox isLight={isLight} onGoToVerse={onGoToVerse} />
 
             {/* ACTION BUTTONS — side by side */}
-            {showActions && (
-                <div className="flex flex-col sm:flex-row gap-3 w-full max-w-sm sm:max-w-2xl">
-
-                    {/* CONTINUE READING */}
-                    {lastChapter && (
+            <div className="flex flex-col sm:flex-row gap-3 w-full max-w-sm sm:max-w-2xl">
+                {/* CONTINUE READING */}
+                {lastChapter && (
+                    <div className="w-full sm:w-1/3 min-w-0 flex">
                         <ActionCard
                             onClick={onContinue}
                             isLight={isLight}
@@ -410,22 +475,14 @@ function InitialScreen({ theme, lastChapter, onContinue, loadingChapters, bookma
                             subtitle={lastChapter.name_simple}
                             accent={false}
                         />
-                    )}
+                    </div>
+                )}
 
-                    {/* GO TO BOOKMARK */}
-                    {bookmark && (
-                        <ActionCard
-                            onClick={onGoToBookmark}
-                            isLight={isLight}
-                            ariaLabel={`Go to bookmark: ${bookmark.verseKey}`}
-                            icon={<BsBookmark />}
-                            label="Go to Bookmark"
-                            subtitle={bookmark.chapter?.name_simple}
-                            accent={true}
-                        />
-                    )}
+                {/* STREAK BOX */}
+                <div className="w-full sm:flex-1 min-w-0 flex">
+                    <StreakBox isLight={isLight} />
                 </div>
-            )}
+            </div>
         </div>
     );
 }
