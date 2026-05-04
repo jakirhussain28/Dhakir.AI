@@ -1,6 +1,7 @@
 // src/utils/api.js
 
-const BASE_URL = "https://api.quran.com/api/v4";
+const BACKEND_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
+const BASE_URL = `${BACKEND_URL}/content/api/v4`;
 
 export const API_CONFIG = {
   translationId: 20,          // Sahih International

@@ -173,5 +173,116 @@ async def refresh_token(request: RefreshTokenRequest):
         print(f"Network error communicating with Auth server: {str(e)}")
         raise HTTPException(status_code=502, detail=f"Failed to communicate with Auth server: {str(e)}")
 
+# NEW: Quran Foundation Content API Token Management
+import asyncio
+import time
+from fastapi import Request
+
+class QfTokenCache:
+    def __init__(self):
+        self._lock = asyncio.Lock()
+        self._token = None
+        self._expires_at = 0
+        self._expires_in = 0
+        
+        env = os.environ.get("QF_ENV", "prelive")
+        if env == "production":
+            self.auth_base_url = "https://oauth2.quran.foundation"
+            self.api_base_url = "https://apis.quran.foundation"
+        else:
+            self.auth_base_url = "https://prelive-oauth2.quran.foundation"
+            self.api_base_url = "https://apis-prelive.quran.foundation"
+
+    def clear(self):
+        self._token = None
+        self._expires_at = 0
+        self._expires_in = 0
+
+    async def get_access_token(self):
+        now = time.time()
+        if self._token and now < self._expires_at - 30:
+            return {"access_token": self._token, "expires_in": self._expires_in}
+            
+        async with self._lock:
+            now = time.time()
+            if self._token and now < self._expires_at - 30:
+                return {"access_token": self._token, "expires_in": self._expires_in}
+                
+            client_id = os.environ.get('QF_CLIENT_ID')
+            client_secret = os.environ.get('QF_CLIENT_SECRET')
+            if not client_id or not client_secret:
+                raise ValueError("Server OAuth configuration is missing (QF_CLIENT_ID or QF_CLIENT_SECRET).")
+            
+            async with httpx.AsyncClient() as client:
+                response = await client.post(
+                    f"{self.auth_base_url}/oauth2/token",
+                    auth=(client_id, client_secret),
+                    headers={"Content-Type": "application/x-www-form-urlencoded"},
+                    data={
+                        "grant_type": "client_credentials",
+                        "scope": "content",
+                    },
+                    timeout=30.0
+                )
+                response.raise_for_status()
+                token_data = response.json()
+                self._token = token_data["access_token"]
+                self._expires_in = token_data["expires_in"]
+                self._expires_at = time.time() + self._expires_in
+                return {"access_token": self._token, "expires_in": self._expires_in}
+
+qf_cache = QfTokenCache()
+
+# NEW: Endpoint to get Content API token directly
+@app.get("/api/auth/content-token")
+async def get_content_token():
+    try:
+        token_info = await qf_cache.get_access_token()
+        return {
+            "access_token": token_info["access_token"],
+            "expires_in": token_info["expires_in"]
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# NEW: Content API Proxy
+@app.get("/content/api/v4/{path:path}")
+async def proxy_content_api(path: str, request: Request):
+    client_id = os.environ.get('QF_CLIENT_ID')
+    if not client_id:
+        raise HTTPException(status_code=500, detail="Server OAuth configuration is missing (QF_CLIENT_ID).")
+    
+    async def fetch_data(token_str):
+        params = dict(request.query_params)
+        async with httpx.AsyncClient() as client:
+            response = await client.get(
+                f"{qf_cache.api_base_url}/content/api/v4/{path}",
+                params=params,
+                headers={
+                    "x-auth-token": token_str,
+                    "x-client-id": client_id,
+                },
+                timeout=30.0
+            )
+            return response
+
+    try:
+        token_info = await qf_cache.get_access_token()
+        response = await fetch_data(token_info["access_token"])
+        
+        if response.status_code == 401:
+            qf_cache.clear()
+            token_info = await qf_cache.get_access_token()
+            response = await fetch_data(token_info["access_token"])
+            
+        if response.status_code != 200:
+            raise HTTPException(status_code=response.status_code, detail=response.text)
+            
+        return response.json()
+    except httpx.RequestError as e:
+        raise HTTPException(status_code=502, detail=f"Failed to communicate with Content API: {str(e)}")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 if __name__ == "__main__":
     uvicorn.run("server:app", host="0.0.0.0", port=8000, reload=True)

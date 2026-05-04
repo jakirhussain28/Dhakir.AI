@@ -8,7 +8,9 @@ const REDIRECT_URI = window.location.origin.includes('localhost')
     ? 'http://localhost:5010/callback' // Matches your Vite port
     : 'https://dhakir.pages.dev/callback';
 
-// const REDIRECT_URI = 'https://dhakir.pages.dev/callback';
+const BACKEND_API_URL = window.location.hostname === 'localhost'
+    ? 'http://localhost:8000'
+    : (import.meta.env.VITE_API_URL || 'http://localhost:8000');
 
 // 1. Generate a random secure string
 const generateRandomString = (length) => {
@@ -112,5 +114,80 @@ export const getUserProfile = () => {
     } catch (e) {
         console.error('Error decoding id_token', e);
         return null;
+    }
+};
+
+export const refreshAccessToken = async () => {
+    const refreshToken = localStorage.getItem('refresh_token');
+    if (!refreshToken) {
+        logout();
+        return null;
+    }
+
+    try {
+        const response = await fetch(`${BACKEND_API_URL}/api/auth/refresh`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ refresh_token: refreshToken })
+        });
+
+        if (!response.ok) {
+            throw new Error('Failed to refresh token');
+        }
+
+        const data = await response.json();
+        
+        if (data.status === 'success' && data.session) {
+            localStorage.setItem('access_token', data.session.access_token);
+            if (data.session.id_token) {
+                localStorage.setItem('id_token', data.session.id_token);
+            }
+            if (data.session.refresh_token) {
+                localStorage.setItem('refresh_token', data.session.refresh_token);
+            }
+            if (data.session.expires_in) {
+                const expiresAt = Date.now() + (data.session.expires_in * 1000);
+                localStorage.setItem('token_expires_at', expiresAt.toString());
+            }
+            return data.session;
+        } else {
+            throw new Error('Invalid session format in refresh response');
+        }
+    } catch (error) {
+        console.error('Token refresh failed:', error);
+        logout();
+        return null;
+    }
+};
+
+let refreshTimeoutId = null;
+
+export const setupTokenRefresh = () => {
+    if (refreshTimeoutId) {
+        clearTimeout(refreshTimeoutId);
+    }
+
+    const expiresAt = localStorage.getItem('token_expires_at');
+    const refreshToken = localStorage.getItem('refresh_token');
+
+    if (!expiresAt || !refreshToken) return;
+
+    const timeUntilExpiry = parseInt(expiresAt, 10) - Date.now();
+    
+    // Refresh 1 minute (60000ms) before it actually expires
+    const refreshTime = timeUntilExpiry - 60000;
+
+    if (refreshTime > 0) {
+        refreshTimeoutId = setTimeout(async () => {
+            const newSession = await refreshAccessToken();
+            if (newSession) {
+                setupTokenRefresh();
+            }
+        }, refreshTime);
+    } else {
+        // Already expired or within 1 minute of expiring, refresh immediately
+        refreshAccessToken().then(session => {
+            if (session) setupTokenRefresh();
+        });
     }
 };

@@ -4,6 +4,7 @@ import Header from './Components/Header';
 import InitialScreen from './Components/InitialScreen';
 import { fetchWithCache, DB_STORES } from './utils/db';
 import { fetchChapters, fetchVerses } from './utils/api';
+import { setupTokenRefresh } from './utils/auth';
 import brandLogo from './assets/brandLogo.svg';
 
 // IMPORT ANALYTICS
@@ -104,6 +105,11 @@ function App() {
       clearTimeout(fadeTimer);
       clearTimeout(removeTimer);
     };
+  }, []);
+
+  // Set up background token refresh
+  useEffect(() => {
+    setupTokenRefresh();
   }, []);
 
   // Persist last-read page (scoped to the current chapter)

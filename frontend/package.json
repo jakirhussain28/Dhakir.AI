@@ -11,7 +11,7 @@
   },
   "dependencies": {
     "@fontsource/jetbrains-mono": "^5.2.8",
-    "@quranjs/api": "^2.0.0",
+    "@quranjs/api": "^2.2.0",
     "@tailwindcss/vite": "^4.1.17",
     "firebase": "^12.9.0",
     "react": "^19.2.0",
