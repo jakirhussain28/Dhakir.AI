@@ -6,7 +6,7 @@ import { HiDotsVertical } from "react-icons/hi";
 import { TiHomeOutline } from "react-icons/ti";
 import { HiOutlineInformationCircle } from "react-icons/hi2";
 import DynamicBar from './DynamicBar';
-import UserMenuModal from './userMenu/UserMenuModal';
+import UserMenuModal from './userComponents/UserMenuModal';
 
 import { initiateLogin, isAuthenticated } from '../utils/auth';
 

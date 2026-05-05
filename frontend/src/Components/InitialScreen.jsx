@@ -1,14 +1,15 @@
 import { useState, useEffect } from 'react';
 import { IoSend, IoClose, IoBookOutline } from "react-icons/io5";
-import { BsBookmark } from "react-icons/bs";
 import { LuHistory } from "react-icons/lu";
 import { IoIosArrowForward } from "react-icons/io";
 import { IoMdArrowRoundForward } from "react-icons/io";
 import { LuLoaderCircle } from "react-icons/lu";
 import { logAnalyticsEvent } from '../firebase';
+import StreakBox from './userComponents/StreakBox';
+import BookmarksBox from './userComponents/BookmarksBox';
 
 /* ── SHARED CARD BUTTON ────────────────────────────────────────── */
-function ActionCard({ onClick, isLight, ariaLabel, icon, label, subtitle, subtitleArabic, accent = false }) {
+export function ActionCard({ onClick, isLight, ariaLabel, icon, label, subtitle, subtitleArabic, accent = false, hideArrow = false }) {
     return (
         <button
             onClick={onClick}
@@ -18,10 +19,10 @@ function ActionCard({ onClick, isLight, ariaLabel, icon, label, subtitle, subtit
         hover:scale-[1.02] active:scale-[0.98] shadow-sm text-left min-w-0
         ${isLight
                     ? accent
-                        ? 'bg-white border-amber-200 hover:border-amber-400 hover:shadow-amber-100 hover:shadow-md'
-                        : 'bg-white border-stone-200 hover:border-emerald-300 hover:shadow-emerald-100 hover:shadow-md'
+                        ? 'bg-white border-stone-100 hover:border-amber-100 hover:shadow-amber-100 hover:shadow-sm'
+                        : 'bg-white border-stone-100 hover:border-emerald-200 hover:shadow-emerald-100 hover:shadow-sm'
                     : accent
-                        ? 'bg-[#1a1b1d] border-white/5 hover:border-amber-500/30 hover:shadow-amber-900/20 hover:shadow-md'
+                        ? 'bg-[#1a1b1d] border-white/5 hover:border-amber-300/30 hover:shadow-amber-900/20 hover:shadow-sm'
                         : 'bg-[#1a1b1d] border-white/5 hover:border-emerald-500/30 hover:shadow-emerald-900/20 hover:shadow-md'
                 }
       `}
@@ -29,7 +30,7 @@ function ActionCard({ onClick, isLight, ariaLabel, icon, label, subtitle, subtit
             {/* Icon blob */}
             <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-colors
         ${isLight
-                    ? accent ? 'bg-amber-50 group-hover:bg-amber-100' : 'bg-emerald-50 group-hover:bg-emerald-100'
+                    ? accent ? 'bg-amber-50 group-hover:bg-amber-100/70' : 'bg-emerald-50 group-hover:bg-emerald-100'
                     : accent ? 'bg-amber-900/20 group-hover:bg-amber-900/30' : 'bg-emerald-900/20 group-hover:bg-emerald-900/30'
                 }`}
             >
@@ -57,8 +58,10 @@ function ActionCard({ onClick, isLight, ariaLabel, icon, label, subtitle, subtit
             </div>
 
             {/* Trailing arrow */}
-            <IoMdArrowRoundForward className={`w-3.5 h-3.5 shrink-0 transition-transform group-hover:translate-x-0.5
-          ${isLight ? 'text-stone-400' : 'text-gray-600'}`} />
+            {!hideArrow && (
+                <IoMdArrowRoundForward className={`w-3.5 h-3.5 shrink-0 transition-transform group-hover:translate-x-0.5
+              ${isLight ? 'text-stone-400' : 'text-gray-600'}`} />
+            )}
         </button>
     );
 }
@@ -384,58 +387,6 @@ function GuidanceBox({ isLight, onGoToVerse }) {
     );
 }
 
-/* ── STREAK BOX ────────────────────────────────────────────────── */
-function StreakBox({ isLight }) {
-    const streakDays = 1;
-    const progressPercent = 34;
-    const dailyGoal = 10; // minutes
-
-    return (
-        <div className={`
-            flex items-center justify-between px-4 py-3.5 rounded-2xl border w-full h-full
-            ${isLight ? 'bg-white border-stone-200 shadow-sm' : 'bg-[#1a1b1d] border-white/5 shadow-md'}
-        `}>
-            {/* Left side: Streak */}
-            <div className="flex items-center gap-3">
-                <div className={`w-[3.25rem] h-10 rounded-xl flex items-center justify-center shrink-0
-                    ${isLight ? 'bg-emerald-50' : 'bg-emerald-900/20'}`}
-                >
-                    <span className={`text-3xl font-semibold ${isLight ? 'text-stone-500' : 'text-gray-300'}`}>
-                        {streakDays}
-                    </span>
-                </div>
-                <span className={`text-[12px] font-bold uppercase tracking-wider ${isLight ? 'text-stone-500' : 'text-gray-400'}`}>
-                    Day Streak
-                </span>
-            </div>
-
-            {/* Right side: Goal Progress */}
-            <div className="flex flex-col items-end gap-1.5 w-[130px] sm:w-[150px] shrink-0">
-                <span className={`text-[12px] font-medium whitespace-nowrap ${isLight ? 'text-stone-600' : 'text-gray-400'}`}>
-                    Daily Goal: &nbsp;{dailyGoal} minutes
-                </span>
-                <div className={`w-full h-3.5 rounded-full overflow-hidden border flex items-center relative
-                    ${isLight ? 'border-stone-500 bg-white' : 'border-gray-500 bg-[#1a1b1d]'}`}
-                >
-                    <div
-                        className={`h-full ${isLight ? 'bg-stone-500' : 'bg-gray-500'}`}
-                        style={{ width: `${progressPercent}%` }}
-                    />
-                    <span className={`absolute inset-0 flex items-center text-[10px] font-bold z-10
-                        ${isLight ? 'text-stone-600' : 'text-gray-300'}`}
-                        style={{
-                            left: `${progressPercent}%`,
-                            paddingLeft: '6px'
-                        }}
-                    >
-                        {progressPercent}%
-                    </span>
-                </div>
-            </div>
-        </div>
-    );
-}
-
 /* ── INITIAL SCREEN ────────────────────────────────────────────── */
 function InitialScreen({ theme, lastChapter, onContinue, loadingChapters, bookmark, onGoToBookmark, onGoToVerse }) {
     const isLight = theme === 'light';
@@ -444,19 +395,7 @@ function InitialScreen({ theme, lastChapter, onContinue, loadingChapters, bookma
         <div className="h-full flex flex-col items-center justify-center gap-5 px-4 select-none">
 
             {/* BOOKMARK BOX */}
-            {bookmark && (
-                <div className="w-full max-w-sm sm:max-w-2xl">
-                    <ActionCard
-                        onClick={onGoToBookmark}
-                        isLight={isLight}
-                        ariaLabel={`Bookmark: ${bookmark.verseKey}`}
-                        icon={<BsBookmark />}
-                        label="Bookmarks"
-                        subtitle={bookmark.chapter?.name_simple}
-                        accent={true}
-                    />
-                </div>
-            )}
+            <BookmarksBox bookmark={bookmark} isLight={isLight} onGoToBookmark={onGoToBookmark} />
 
             {/* AI GUIDANCE BOX */}
             <GuidanceBox isLight={isLight} onGoToVerse={onGoToVerse} />
