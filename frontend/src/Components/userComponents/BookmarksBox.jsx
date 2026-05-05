@@ -59,7 +59,7 @@ function BookmarksBox({ bookmarks, isLight, onGoToBookmark, onRemoveBookmark }) 
             </div>
 
             {/* Bookmarks list */}
-            <div className="flex-1 flex items-center gap-2.5 overflow-x-auto custom-scrollbar py-1.5 -my-1.5 px-1.5">
+            <div className="flex-1 flex items-center gap-2.5 overflow-x-auto no-scrollbar py-1.5 -my-1.5 px-1.5">
                 {[...bookmarks].reverse().map((bookmark) => (
                     <BookmarkPill
                         key={bookmark.verseKey}
