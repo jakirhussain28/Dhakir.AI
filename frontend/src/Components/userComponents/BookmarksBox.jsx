@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { BsBookmark } from "react-icons/bs";
 import { IoCloseCircleOutline } from "react-icons/io5";
 
@@ -14,21 +14,27 @@ function BookmarkPill({ bookmark, isLight, onGoToBookmark, onRemoveBookmark }) {
 
     return (
         <div
-            className={`relative z-10 flex items-center gap-3 px-3.5 py-1.5 rounded-full border cursor-pointer shrink-0 transition-all duration-200 hover:scale-[1.08] hover:z-50 ${pillBg}`}
+            className={`relative z-10 flex flex-col sm:flex-row items-center justify-center gap-0 sm:gap-3 px-4 py-1.5 sm:px-3.5 sm:py-1.5 rounded-2xl sm:rounded-full border cursor-pointer shrink-0 transition-all duration-200 hover:scale-[1.08] hover:z-50 ${pillBg}`}
             onClick={() => onGoToBookmark(bookmark)}
         >
             <span className={`text-sm font-semibold ${textColor}`}>
                 {bookmark.chapter?.name_simple}
             </span>
             <div
-                className="flex items-center justify-center min-w-[32px] h-5"
-                onMouseEnter={() => setIsHoveringVerse(true)}
-                onMouseLeave={() => setIsHoveringVerse(false)}
-                onClick={(e) => {
-                    e.stopPropagation();
-                    onRemoveBookmark(bookmark.verseKey);
+                className="flex items-center justify-center min-w-[32px] h-4 sm:h-5 mt-0.5 sm:mt-0"
+                onPointerEnter={(e) => {
+                    if (e.pointerType === 'mouse') setIsHoveringVerse(true);
                 }}
-                title="Remove Bookmark"
+                onPointerLeave={(e) => {
+                    if (e.pointerType === 'mouse') setIsHoveringVerse(false);
+                }}
+                onClick={(e) => {
+                    if (isHoveringVerse) {
+                        e.stopPropagation();
+                        onRemoveBookmark(bookmark.verseKey);
+                    }
+                }}
+                title={isHoveringVerse ? "Remove Bookmark" : undefined}
             >
                 {isHoveringVerse ? (
                     <IoCloseCircleOutline className={`w-6 h-6 transition-colors ${isLight ? 'text-stone-400' : 'text-gray-200'}`} />
@@ -43,6 +49,32 @@ function BookmarkPill({ bookmark, isLight, onGoToBookmark, onRemoveBookmark }) {
 }
 
 function BookmarksBox({ bookmarks, isLight, onGoToBookmark, onRemoveBookmark }) {
+    const boxRef = useRef(null);
+    const scrollContainerRef = useRef(null);
+
+    useEffect(() => {
+        const boxEl = boxRef.current;
+        const scrollEl = scrollContainerRef.current;
+        if (!boxEl || !scrollEl) return;
+
+        const handleWheel = (e) => {
+            if (e.deltaY === 0) return;
+            
+            // Prevent page from scrolling vertically
+            e.preventDefault();
+            
+            // Scroll horizontally instead
+            scrollEl.scrollLeft += e.deltaY;
+        };
+
+        // passive: false is necessary to call preventDefault
+        boxEl.addEventListener('wheel', handleWheel, { passive: false });
+        
+        return () => {
+            boxEl.removeEventListener('wheel', handleWheel);
+        };
+    }, []);
+
     if (!bookmarks || bookmarks.length === 0) return null;
 
     const containerBg = isLight
@@ -52,14 +84,17 @@ function BookmarksBox({ bookmarks, isLight, onGoToBookmark, onRemoveBookmark }) 
     const iconBg = isLight ? 'bg-amber-50' : 'bg-amber-900/20';
 
     return (
-        <div className={`w-full max-w-sm sm:max-w-2xl flex items-center gap-3 px-4 py-3.5 rounded-2xl border transition-all duration-200 ${containerBg}`}>
+        <div ref={boxRef} className={`w-full max-w-sm sm:max-w-2xl flex items-center gap-3 px-4 py-3.5 rounded-2xl border transition-all duration-200 ${containerBg}`}>
             {/* Icon blob */}
             <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${iconBg}`}>
                 <BsBookmark className={isLight ? 'text-stone-600' : 'text-white-400'} size={18} />
             </div>
 
             {/* Bookmarks list */}
-            <div className="flex-1 flex items-center gap-2.5 overflow-x-auto no-scrollbar py-1.5 -my-1.5 px-1.5">
+            <div 
+                ref={scrollContainerRef}
+                className="flex-1 flex items-center gap-2.5 overflow-x-auto no-scrollbar py-1.5 -my-1.5 px-1.5"
+            >
                 {[...bookmarks].reverse().map((bookmark) => (
                     <BookmarkPill
                         key={bookmark.verseKey}
