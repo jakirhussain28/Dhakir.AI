@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { IoSend, IoClose, IoBookOutline } from "react-icons/io5";
+import { IoSend, IoClose, IoBookOutline, IoCloseCircleOutline } from "react-icons/io5";
 import { LuHistory } from "react-icons/lu";
 import { IoIosArrowForward } from "react-icons/io";
 import { IoMdArrowRoundForward } from "react-icons/io";
@@ -388,14 +388,14 @@ function GuidanceBox({ isLight, onGoToVerse }) {
 }
 
 /* ── INITIAL SCREEN ────────────────────────────────────────────── */
-function InitialScreen({ theme, lastChapter, onContinue, loadingChapters, bookmark, onGoToBookmark, onGoToVerse }) {
+function InitialScreen({ theme, lastChapter, onContinue, loadingChapters, bookmarks, onGoToBookmark, onRemoveBookmark, onGoToVerse }) {
     const isLight = theme === 'light';
 
     return (
         <div className="h-full flex flex-col items-center justify-center gap-5 px-4 select-none">
 
             {/* BOOKMARK BOX */}
-            <BookmarksBox bookmark={bookmark} isLight={isLight} onGoToBookmark={onGoToBookmark} />
+            <BookmarksBox bookmarks={bookmarks} isLight={isLight} onGoToBookmark={onGoToBookmark} onRemoveBookmark={onRemoveBookmark} />
 
             {/* AI GUIDANCE BOX */}
             <GuidanceBox isLight={isLight} onGoToVerse={onGoToVerse} />

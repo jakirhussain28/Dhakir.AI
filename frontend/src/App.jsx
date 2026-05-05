@@ -15,11 +15,18 @@ const SurahInfoModal = lazy(() => import('./Components/SurahInfoModal'));
 
 function App() {
   // HELPERS
-  const getInitialBookmark = () => {
+  const getInitialBookmarks = () => {
     try {
-      const saved = localStorage.getItem('app-bookmark');
-      return saved ? JSON.parse(saved) : null;
-    } catch { return null; }
+      const saved = localStorage.getItem('app-bookmarks');
+      if (saved) return JSON.parse(saved);
+      // Fallback for migration
+      const oldSaved = localStorage.getItem('app-bookmark');
+      if (oldSaved) {
+        const parsed = JSON.parse(oldSaved);
+        return parsed ? [parsed] : [];
+      }
+      return [];
+    } catch { return []; }
   };
 
   // Continue Reading: always uses independently-tracked last chapter/page
@@ -44,7 +51,7 @@ function App() {
   };
 
   // APP STATE
-  const [bookmark, setBookmark] = useState(getInitialBookmark);
+  const [bookmarks, setBookmarks] = useState(getInitialBookmarks);
   const [chapters, setChapters] = useState([]);
 
   const [selectedChapter, setSelectedChapter] = useState(getInitialChapter);
@@ -120,12 +127,8 @@ function App() {
   }, [selectedChapter, page]);
 
   useEffect(() => {
-    if (bookmark) {
-      localStorage.setItem('app-bookmark', JSON.stringify(bookmark));
-    } else {
-      localStorage.removeItem('app-bookmark');
-    }
-  }, [bookmark]);
+    localStorage.setItem('app-bookmarks', JSON.stringify(bookmarks));
+  }, [bookmarks]);
 
   // --- UPDATED ANALYTICS LOGIC ---
   useEffect(() => {
@@ -296,22 +299,32 @@ function App() {
 
   const handleToggleBookmark = (verseKey, verseId) => {
     let actionType = 'add';
-    if (bookmark && bookmark.verseKey === verseKey) {
-      setBookmark(null);
-      actionType = 'remove';
-    }
-    else {
-      setBookmark({
-        chapter: selectedChapter,
-        verseId: verseId,
-        verseKey: verseKey,
-        timestamp: Date.now()
-      });
-    }
+    setBookmarks(prev => {
+      const exists = prev.some(b => b.verseKey === verseKey);
+      if (exists) {
+        actionType = 'remove';
+        return prev.filter(b => b.verseKey !== verseKey);
+      } else {
+        return [...prev, {
+          chapter: selectedChapter,
+          verseId: verseId,
+          verseKey: verseKey,
+          timestamp: Date.now()
+        }];
+      }
+    });
 
     logAnalyticsEvent('bookmark_toggle', {
       action: actionType,
       chapter_id: selectedChapter?.id,
+      verse_key: verseKey
+    });
+  };
+
+  const handleRemoveBookmark = (verseKey) => {
+    setBookmarks(prev => prev.filter(b => b.verseKey !== verseKey));
+    logAnalyticsEvent('bookmark_toggle', {
+      action: 'remove',
       verse_key: verseKey
     });
   };
@@ -376,9 +389,9 @@ function App() {
   };
 
   // "Go to Bookmark" — navigate to bookmarked chapter + exact verse
-  const handleGoToBookmark = () => {
-    if (!bookmark) return;
-    const { chapter: bmChapter, verseId } = bookmark;
+  const handleGoToBookmark = (targetBookmark) => {
+    if (!targetBookmark) return;
+    const { chapter: bmChapter, verseId } = targetBookmark;
     const requiredPage = Math.ceil(verseId / 10);
 
     stopAudioTrigger.current(true);
@@ -386,7 +399,7 @@ function App() {
 
     if (selectedChapter && selectedChapter.id === bmChapter.id) {
       // Already on the right chapter — just jump to the verse
-      const isLoaded = verses.some(v => v.verse_key === bookmark.verseKey);
+      const isLoaded = verses.some(v => v.verse_key === targetBookmark.verseKey);
       if (isLoaded) {
         setTargetVerse({ id: verseId });
       } else {
@@ -455,8 +468,9 @@ function App() {
             lastChapter={selectedChapter}
             onContinue={handleContinueReading}
             loadingChapters={loadingChapters}
-            bookmark={bookmark}
+            bookmarks={bookmarks}
             onGoToBookmark={handleGoToBookmark}
+            onRemoveBookmark={handleRemoveBookmark}
             onGoToVerse={handleGoToVerse}
             chapters={chapters}
           />
@@ -485,7 +499,7 @@ function App() {
             startPage={startPage}
             onLoadPrevious={handleLoadPrevious}
             loadingTop={loadingTop}
-            bookmark={bookmark}
+            bookmarks={bookmarks}
             onToggleBookmark={handleToggleBookmark}
           />
         )}

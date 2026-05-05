@@ -1,22 +1,75 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { BsBookmark } from "react-icons/bs";
-import { ActionCard } from '../InitialScreen';
+import { IoCloseCircleOutline } from "react-icons/io5";
 
-function BookmarksBox({ bookmark, isLight, onGoToBookmark }) {
-    if (!bookmark) return null;
+function BookmarkPill({ bookmark, isLight, onGoToBookmark, onRemoveBookmark }) {
+    const [isHoveringVerse, setIsHoveringVerse] = useState(false);
+
+    const pillBg = isLight
+        ? 'bg-white border-amber-200/70 hover:border-amber-300/80 shadow-sm hover:shadow'
+        : 'bg-[#1a1b1d] border-amber-700/30 hover:border-amber-600/50 shadow-md';
+
+    const textColor = isLight ? 'text-stone-700' : 'text-gray-200';
+    const verseColor = isLight ? 'text-stone-400' : 'text-gray-500';
 
     return (
-        <div className="w-full max-w-sm sm:max-w-2xl">
-            <ActionCard
-                onClick={onGoToBookmark}
-                isLight={isLight}
-                ariaLabel={`Bookmark: ${bookmark.verseKey}`}
-                icon={<BsBookmark />}
-                // label="Bookmarks"
-                subtitle={bookmark.chapter?.name_simple}
-                accent={true}
-                hideArrow={true}
-            />
+        <div
+            className={`relative z-10 flex items-center gap-3 px-3.5 py-1.5 rounded-full border cursor-pointer shrink-0 transition-all duration-200 hover:scale-[1.08] hover:z-50 ${pillBg}`}
+            onClick={() => onGoToBookmark(bookmark)}
+        >
+            <span className={`text-sm font-semibold ${textColor}`}>
+                {bookmark.chapter?.name_simple}
+            </span>
+            <div
+                className="flex items-center justify-center min-w-[32px] h-5"
+                onMouseEnter={() => setIsHoveringVerse(true)}
+                onMouseLeave={() => setIsHoveringVerse(false)}
+                onClick={(e) => {
+                    e.stopPropagation();
+                    onRemoveBookmark(bookmark.verseKey);
+                }}
+                title="Remove Bookmark"
+            >
+                {isHoveringVerse ? (
+                    <IoCloseCircleOutline className={`w-6 h-6 transition-colors ${isLight ? 'text-stone-400' : 'text-gray-200'}`} />
+                ) : (
+                    <span className={`text-[13px] font-mono font-medium ${verseColor}`}>
+                        {bookmark.verseKey}
+                    </span>
+                )}
+            </div>
+        </div>
+    );
+}
+
+function BookmarksBox({ bookmarks, isLight, onGoToBookmark, onRemoveBookmark }) {
+    if (!bookmarks || bookmarks.length === 0) return null;
+
+    const containerBg = isLight
+        ? 'bg-white border-stone-100 shadow-sm'
+        : 'bg-[#1a1b1d] border-white/5 shadow-md';
+
+    const iconBg = isLight ? 'bg-amber-50' : 'bg-amber-900/20';
+
+    return (
+        <div className={`w-full max-w-sm sm:max-w-2xl flex items-center gap-3 px-4 py-3.5 rounded-2xl border transition-all duration-200 ${containerBg}`}>
+            {/* Icon blob */}
+            <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${iconBg}`}>
+                <BsBookmark className={isLight ? 'text-stone-600' : 'text-white-400'} size={18} />
+            </div>
+
+            {/* Bookmarks list */}
+            <div className="flex-1 flex items-center gap-2.5 overflow-x-auto custom-scrollbar py-1.5 -my-1.5 px-1.5">
+                {[...bookmarks].reverse().map((bookmark) => (
+                    <BookmarkPill
+                        key={bookmark.verseKey}
+                        bookmark={bookmark}
+                        isLight={isLight}
+                        onGoToBookmark={onGoToBookmark}
+                        onRemoveBookmark={onRemoveBookmark}
+                    />
+                ))}
+            </div>
         </div>
     );
 }

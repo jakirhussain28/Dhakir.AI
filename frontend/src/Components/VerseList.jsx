@@ -35,7 +35,7 @@ function VerseList({
   startPage,
   onLoadPrevious,
   loadingTop,
-  bookmark,
+  bookmarks,
   onToggleBookmark
 }) {
   /* AUDIO STATE */
@@ -409,7 +409,7 @@ function VerseList({
                 isPlaying={isPlayingVerse}
                 isPaused={isPaused}
                 audioLoading={audioLoading}
-                bookmark={bookmark}
+                bookmarks={bookmarks}
                 onToggleBookmark={onToggleBookmark}
                 onPlayPause={() => handlePlayPause(verse)}
                 fontSize={fontSize}

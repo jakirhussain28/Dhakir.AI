@@ -39,7 +39,7 @@ const VerseCard = forwardRef(({
   isPlaying,
   isPaused,
   audioLoading,
-  bookmark,
+  bookmarks,
   onToggleBookmark,
   onPlayPause,
   fontSize,
@@ -69,7 +69,7 @@ const VerseCard = forwardRef(({
     : '';
 
   // Data processing
-  const isBookmarked = bookmark?.verseKey === verse.verse_key;
+  const isBookmarked = bookmarks?.some(b => b.verseKey === verse.verse_key);
   const verseIdInt = parseInt(verse.verse_key.split(':')[1]);
   const arabicNumber = toArabicNumerals(verseIdInt);
 
