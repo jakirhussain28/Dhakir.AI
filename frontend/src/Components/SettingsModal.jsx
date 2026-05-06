@@ -69,7 +69,7 @@ function SettingsModal({
         <div className="space-y-4 sm:space-y-5">
 
           {/* THEME */}
-          <div className={`${rowBase} rounded-3xl h-16 sm:h-20 px-4 sm:px-6 flex items-center justify-between gap-2 transition-colors duration-300`}>
+          <div className={`${rowBase} rounded-3xl h-12 sm:h-16 px-4 sm:px-6 flex items-center justify-between gap-2 transition-colors duration-300`}>
             <span className={`text-sm sm:text-base font-medium whitespace-nowrap transition-colors ${theme === 'night' ? textActive : textInactive}`}>
               Night Sky
             </span>
@@ -91,9 +91,9 @@ function SettingsModal({
             </span>
           </div>
 
-          {/* SAHIH TRANSLATION */}
-          <div className={`${rowBase} rounded-3xl h-16 sm:h-20 px-4 sm:px-6 flex items-center justify-between transition-colors duration-300`}>
-            <span className={`text-sm sm:text-base font-medium ${labelColor}`}>Sahih Translation</span>
+          {/* SELECT TRANSLATION */}
+          <div className={`${rowBase} rounded-3xl h-12 sm:h-16 px-4 sm:px-6 flex items-center justify-between transition-colors duration-300`}>
+            <span className={`text-sm sm:text-base font-medium ${labelColor}`}>Sahih Intl. Translation</span>
 
             <button
               onClick={() => setShowTranslation(!showTranslation)}
@@ -120,7 +120,7 @@ function SettingsModal({
           </div>
 
           {/* TRANSLITERATION (UPDATED) */}
-          <div className={`${rowBase} rounded-3xl h-16 sm:h-20 px-4 sm:px-6 flex items-center justify-between transition-colors duration-300`}>
+          <div className={`${rowBase} rounded-3xl h-12 sm:h-16 px-4 sm:px-6 flex items-center justify-between transition-colors duration-300`}>
             <span className={`text-sm sm:text-base font-medium ${labelColor}`}>Transliteration</span>
 
             <button
@@ -147,9 +147,9 @@ function SettingsModal({
             </button>
           </div>
 
-          {/* ONLY TRANSLATION */}
-          <div className={`${rowBase} rounded-3xl h-16 sm:h-20 px-4 sm:px-6 flex items-center justify-between transition-colors duration-300`}>
-            <span className={`text-sm sm:text-base font-medium ${labelColor}`}>Only Translation</span>
+          {/* SHOW ONLY TRANSLATION */}
+          <div className={`${rowBase} rounded-3xl h-12 sm:h-16 px-4 sm:px-6 flex items-center justify-between transition-colors duration-300`}>
+            <span className={`text-sm sm:text-base font-medium ${labelColor}`}>Show Only Translation</span>
 
             <button
               onClick={() => setOnlyTranslation(!onlyTranslation)}

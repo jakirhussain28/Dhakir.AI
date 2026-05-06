@@ -132,7 +132,7 @@ const VerseCard = forwardRef(({
              order-2 md:order-2
              p-2 rounded-full transition-all duration-200
              ${isBookmarked
-              ? (isLight ? 'bg-emerald-100 text-emerald-600' : 'bg-emerald-500/20 text-emerald-400')
+              ? (isLight ? 'bg-amber-100 text-stone-500' : 'bg-amber-700/20 text-amber-500/70')
               : 'text-gray-400 opacity-50 hover:opacity-100 hover:bg-white/5'
             }
           `}

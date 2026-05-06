@@ -36,7 +36,7 @@ function StreakBox({ isLight }) {
                         className={`h-full ${isLight ? 'bg-stone-500' : 'bg-gray-500'}`}
                         style={{ width: `${progressPercent}%` }}
                     />
-                    <span className={`absolute inset-0 flex items-center text-[10px] font-bold z-10
+                    {/* <span className={`absolute inset-0 flex items-center text-[10px] font-bold z-10
                         ${isLight ? 'text-stone-600' : 'text-gray-300'}`}
                         style={{
                             left: `${progressPercent}%`,
@@ -44,7 +44,7 @@ function StreakBox({ isLight }) {
                         }}
                     >
                         {progressPercent}%
-                    </span>
+                    </span> */}
                 </div>
             </div>
         </div>

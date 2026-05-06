@@ -72,14 +72,15 @@ const HISTORY_KEY = 'ai_guidance_history';
 const MAX_HISTORY = 20;
 
 const PLACEHOLDERS = [
-    "Share what's on your mind…",
+    "How are you?",
+    "Share what's on your mind, I am listening…",
     "I am feeling happy today…",
+    "I need guidance on forgiving someone…",
+    "I feel grateful but don't know how to express it…",
     "I am feeling lonely and lost…",
     "I wish I had more patience…",
     "I'm struggling with anxiety…",
     "I am feeling blessed…",
-    "I need guidance on forgiving someone…",
-    "I feel grateful but don't know how to express it…",
     "I'm going through a difficult time…",
     "I wish I had more strength…",
     "I'm looking for hope and clarity…",
@@ -185,7 +186,7 @@ function GuidanceBox({ isLight, onGoToVerse }) {
     /* ── style tokens ── */
     const boxBg = isLight
         ? 'bg-white border border-stone-200 shadow-sm'
-        : 'bg-[#1a1b1d] border border-white/5 shadow-md';
+        : 'bg-[#222426] border border-white/10 shadow-md';
     const inputBg = isLight
         ? 'bg-stone-100 text-stone-800 placeholder-stone-400'
         : 'bg-[#111214] text-gray-200 placeholder-gray-600';
@@ -196,7 +197,7 @@ function GuidanceBox({ isLight, onGoToVerse }) {
         : 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-sm active:scale-95';
     const historyBtn = isLight
         ? 'bg-stone-100 hover:bg-stone-200 text-stone-500 hover:text-stone-700 active:scale-95'
-        : 'bg-[#222426] hover:bg-[#2a2c2f] text-gray-500 hover:text-gray-300 active:scale-95';
+        : 'bg-[#2d2f33] hover:bg-[#383b3f] text-gray-500 hover:text-gray-300 active:scale-95';
 
     const hasText = prompt.trim().length > 0;
     const isAlreadyAnswered = response && prompt.trim() === answeredPrompt;
@@ -227,7 +228,7 @@ function GuidanceBox({ isLight, onGoToVerse }) {
                                 opacity: placeholderVisible && !isFocused ? 1 : 0,
                                 transform: placeholderVisible && !isFocused ? 'translateY(0)' : 'translateY(-4px)',
                             }}
-                            className={`pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-sm select-none ${isLight ? 'text-stone-400' : 'text-gray-600'}`}
+                            className={`pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-sm select-none ${isLight ? 'text-stone-500' : 'text-gray-400'}`}
                         >
                             {PLACEHOLDERS[placeholderIdx]}
                         </span>
@@ -263,11 +264,11 @@ function GuidanceBox({ isLight, onGoToVerse }) {
             {showHistory && (
                 <div
                     className={`rounded-xl overflow-hidden flex flex-col transition-all duration-200
-                        ${isLight ? 'bg-stone-50 border border-stone-100' : 'bg-[#111214] border border-white/5'}`}
+                        ${isLight ? 'bg-stone-50 border border-stone-100' : 'bg-[#111214] border border-white/10'}`}
                     style={{ maxHeight: '280px' }}
                 >
                     {/* Header */}
-                    <div className={`flex items-center justify-between px-3.5 py-2.5 border-b ${isLight ? 'border-stone-200' : 'border-white/5'}`}>
+                    <div className={`flex items-center justify-between px-3.5 py-2.5 border-b ${isLight ? 'border-stone-200' : 'border-white/10'}`}>
                         <span className={`text-xs font-semibold uppercase tracking-wide ${isLight ? 'text-stone-500' : 'text-gray-500'}`}>
                             Recent Questions
                         </span>
@@ -290,7 +291,7 @@ function GuidanceBox({ isLight, onGoToVerse }) {
                             history.map((item, idx) => {
                                 const isExpanded = expandedIdx === idx;
                                 return (
-                                    <div key={item.timestamp + idx} className={`border-b last:border-b-0 ${isLight ? 'border-stone-100' : 'border-white/5'}`}>
+                                    <div key={item.timestamp + idx} className={`border-b last:border-b-0 ${isLight ? 'border-stone-100' : 'border-white/10'}`}>
                                         {/* Question row */}
                                         <button
                                             onClick={() => setExpandedIdx(isExpanded ? null : idx)}
@@ -348,7 +349,7 @@ function GuidanceBox({ isLight, onGoToVerse }) {
 
             {/* ── Response area ── */}
             {(response || error) && (
-                <div className={`rounded-xl p-3.5 flex flex-col gap-3 ${isLight ? 'bg-stone-50 border border-stone-100' : 'bg-[#111214] border border-white/5'}`}>
+                <div className={`rounded-xl p-3.5 flex flex-col gap-3 ${isLight ? 'bg-stone-50 border border-stone-100' : 'bg-[#111214] border border-white/10'}`}>
                     {error && (
                         <p className="text-xs text-red-500">{error}</p>
                     )}
