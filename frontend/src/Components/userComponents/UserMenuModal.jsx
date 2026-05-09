@@ -1,27 +1,47 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { FaUser } from "react-icons/fa6";
 import { IoArrowBack } from "react-icons/io5";
 import { TbLogout2 } from "react-icons/tb";
-import { logout, getUserProfile } from '../../utils/auth';
+import { logout } from '../../utils/auth';
+import { fetchUserProfile, updateUserProfile } from '../../utils/api';
 
 const UserMenuModal = ({ isOpen, onClose, theme }) => {
     const [activeView, setActiveView] = useState('menu'); // 'menu' or 'profile'
     const [userProfile, setUserProfile] = useState(null);
+    const [profileLoading, setProfileLoading] = useState(false);
+    const [profileError, setProfileError] = useState(null);
+    const [isSaving, setIsSaving] = useState(false);
+    const [saveSuccess, setSaveSuccess] = useState(false);
 
-    // Fetch user profile on mount
+    const firstNameRef = useRef(null);
+    const lastNameRef = useRef(null);
+
+    // Fetch QF user profile from the pre-live API when modal opens
     useEffect(() => {
-        if (isOpen) {
-            const profile = getUserProfile();
-            setUserProfile(profile);
-        }
+        if (!isOpen) return;
+
+        const token = localStorage.getItem('access_token');
+        if (!token) return;
+
+        setProfileLoading(true);
+        setProfileError(null);
+
+        fetchUserProfile()
+            .then(data => {
+                // Pre-live spec: response is the profile object directly
+                setUserProfile(data?.data ?? data);
+            })
+            .catch(err => {
+                console.error('Failed to fetch user profile:', err);
+                setProfileError('Could not load profile.');
+            })
+            .finally(() => setProfileLoading(false));
     }, [isOpen]);
 
     // Close on Escape key
     useEffect(() => {
-        const handleEsc = (e) => {
-            if (e.key === 'Escape') onClose();
-        };
+        const handleEsc = (e) => { if (e.key === 'Escape') onClose(); };
         if (isOpen) document.addEventListener('keydown', handleEsc);
         return () => document.removeEventListener('keydown', handleEsc);
     }, [isOpen, onClose]);
@@ -29,18 +49,18 @@ const UserMenuModal = ({ isOpen, onClose, theme }) => {
     // Reset view when modal closes
     useEffect(() => {
         if (!isOpen) {
-            const timer = setTimeout(() => setActiveView('menu'), 300);
+            const timer = setTimeout(() => {
+                setActiveView('menu');
+                setSaveSuccess(false);
+            }, 300);
             return () => clearTimeout(timer);
         }
     }, [isOpen]);
 
-    /* LOCK SCROLL */
+    // Lock background scroll
     useEffect(() => {
-        if (isOpen) {
-            document.body.style.overflow = 'hidden'; // prevent bg scroll
-        } else {
-            document.body.style.overflow = 'unset';
-        }
+        if (isOpen) document.body.style.overflow = 'hidden';
+        else document.body.style.overflow = 'unset';
         return () => { document.body.style.overflow = 'unset'; };
     }, [isOpen]);
 
@@ -65,14 +85,29 @@ const UserMenuModal = ({ isOpen, onClose, theme }) => {
     const labelColor = isLight ? 'text-stone-500' : 'text-gray-400';
     const iconColor = isLight ? 'text-stone-400' : 'text-gray-400';
 
-    const inputTextColor = textInactive; // For immutable
-    const activeInputText = textActive;  // For mutable
-
     const handleBack = () => {
-        if (activeView === 'profile') {
-            setActiveView('menu');
-        } else {
-            onClose();
+        if (activeView === 'profile') setActiveView('menu');
+        else onClose();
+    };
+
+    const handleSaveProfile = async () => {
+        setIsSaving(true);
+        setSaveSuccess(false);
+        setProfileError(null);
+        try {
+            const payload = {
+                firstName: firstNameRef.current?.value || '',
+                lastName: lastNameRef.current?.value || '',
+            };
+            const updated = await updateUserProfile(payload);
+            setUserProfile(prev => ({ ...prev, ...payload, ...(updated?.data ?? {}) }));
+            setSaveSuccess(true);
+            setTimeout(() => setSaveSuccess(false), 2500);
+        } catch (err) {
+            console.error('Failed to save profile:', err);
+            setProfileError('Failed to save. Please try again.');
+        } finally {
+            setIsSaving(false);
         }
     };
 
@@ -84,11 +119,10 @@ const UserMenuModal = ({ isOpen, onClose, theme }) => {
             role="dialog"
         >
             <div
-                className={`w-[90%] max-w-[380px] rounded-4xl p-5 sm:p-6 border ${cardBg} 
-                            relative transition-colors duration-300`}
+                className={`w-[90%] max-w-[380px] rounded-4xl p-5 sm:p-6 border ${cardBg} relative transition-colors duration-300`}
                 onClick={(e) => e.stopPropagation()}
             >
-                {/* Header Row: Back + User Icon */}
+                {/* Header Row */}
                 <div className="flex items-center justify-between mb-4 sm:mb-5">
                     <button
                         onClick={handleBack}
@@ -100,7 +134,7 @@ const UserMenuModal = ({ isOpen, onClose, theme }) => {
                     <FaUser className={`w-5 h-5 sm:w-6 sm:h-6 ${iconColor}`} />
                 </div>
 
-                {/* Content based on activeView */}
+                {/* ── Menu View ── */}
                 {activeView === 'menu' ? (
                     <div className="space-y-4 sm:space-y-5 animate-in slide-in-from-left-4 fade-in duration-300">
                         <button
@@ -112,72 +146,92 @@ const UserMenuModal = ({ isOpen, onClose, theme }) => {
 
                         <button
                             className={`w-full ${rowBase} rounded-3xl h-16 sm:h-20 px-4 sm:px-6 flex items-center justify-center transition-colors duration-300 focus:outline-none`}
-                            onClick={() => {
-                                // Placeholder for Streak action
-                                onClose();
-                            }}
+                            onClick={onClose}
                         >
                             <span className={`text-sm sm:text-base font-medium ${textActive}`}>Streak</span>
                         </button>
 
                         <button
                             className={`w-full ${rowBase} rounded-3xl h-16 sm:h-20 px-4 sm:px-6 flex items-center justify-center gap-2 transition-colors duration-300 focus:outline-none`}
-                            onClick={() => {
-                                logout();
-                                onClose();
-                            }}
+                            onClick={() => { logout(); onClose(); }}
                         >
                             <TbLogout2 className={`w-5 h-5 sm:w-6 sm:h-6 ${textActive}`} />
                             <span className={`text-sm sm:text-base font-medium ${textActive}`}>Logout</span>
                         </button>
                     </div>
+
                 ) : (
+                    /* ── Profile View ── */
                     <div className="animate-in slide-in-from-right-4 fade-in duration-300">
-                        <div className="space-y-3 sm:space-y-4">
-                            <div className={`w-full ${formRowBg} rounded-2xl h-14 sm:h-16 px-3 flex items-center`}>
-                                <span className={`w-24 sm:w-28 text-sm sm:text-base font-medium pl-1 sm:pl-2 ${labelColor}`}>Email</span>
-                                <input
-                                    type="text"
-                                    value={userProfile?.email || "No Email"}
-                                    disabled
-                                    className={`flex-1 h-10 sm:h-11 px-3 sm:px-4 rounded-xl text-sm sm:text-base outline-none ${inputBg} ${inputTextColor}`}
-                                />
-                            </div>
+                        {profileLoading ? (
+                            <div className={`text-center py-8 text-sm ${textInactive}`}>Loading profile…</div>
+                        ) : (
+                            <div className="space-y-3 sm:space-y-4">
+                                {/* Email — read-only */}
+                                <div className={`w-full ${formRowBg} rounded-2xl h-14 sm:h-16 px-3 flex items-center`}>
+                                    <span className={`w-24 sm:w-28 text-sm sm:text-base font-medium pl-1 sm:pl-2 ${labelColor}`}>Email</span>
+                                    <input
+                                        type="text"
+                                        value={userProfile?.email || '—'}
+                                        disabled
+                                        className={`flex-1 h-10 sm:h-11 px-3 sm:px-4 rounded-xl text-sm sm:text-base outline-none ${inputBg} ${textInactive}`}
+                                    />
+                                </div>
 
-                            <div className={`w-full ${formRowBg} rounded-2xl h-14 sm:h-16 px-3 flex items-center`}>
-                                <span className={`w-24 sm:w-28 text-sm sm:text-base font-medium pl-1 sm:pl-2 ${labelColor}`}>Username</span>
-                                <input
-                                    type="text"
-                                    value={userProfile?.preferred_username || userProfile?.nickname || userProfile?.name || "No Username"}
-                                    disabled
-                                    className={`flex-1 h-10 sm:h-11 px-3 sm:px-4 rounded-xl text-sm sm:text-base outline-none ${inputBg} ${inputTextColor}`}
-                                />
-                            </div>
+                                {/* Username — read-only */}
+                                <div className={`w-full ${formRowBg} rounded-2xl h-14 sm:h-16 px-3 flex items-center`}>
+                                    <span className={`w-24 sm:w-28 text-sm sm:text-base font-medium pl-1 sm:pl-2 ${labelColor}`}>Username</span>
+                                    <input
+                                        type="text"
+                                        value={userProfile?.username || '—'}
+                                        disabled
+                                        className={`flex-1 h-10 sm:h-11 px-3 sm:px-4 rounded-xl text-sm sm:text-base outline-none ${inputBg} ${textInactive}`}
+                                    />
+                                </div>
 
-                            <div className={`w-full ${formRowBg} rounded-2xl h-14 sm:h-16 px-3 flex items-center`}>
-                                <span className={`w-24 sm:w-28 text-sm sm:text-base font-medium pl-1 sm:pl-2 ${labelColor}`}>First Name</span>
-                                <input
-                                    type="text"
-                                    defaultValue={userProfile?.given_name || ""}
-                                    className={`flex-1 h-10 sm:h-11 px-3 sm:px-4 rounded-xl text-sm sm:text-base outline-none ${inputBg} ${activeInputText} focus:ring-1 focus:ring-emerald-500`}
-                                />
-                            </div>
+                                {/* First Name — editable */}
+                                <div className={`w-full ${formRowBg} rounded-2xl h-14 sm:h-16 px-3 flex items-center`}>
+                                    <span className={`w-24 sm:w-28 text-sm sm:text-base font-medium pl-1 sm:pl-2 ${labelColor}`}>First Name</span>
+                                    <input
+                                        ref={firstNameRef}
+                                        type="text"
+                                        defaultValue={userProfile?.firstName || ''}
+                                        className={`flex-1 h-10 sm:h-11 px-3 sm:px-4 rounded-xl text-sm sm:text-base outline-none ${inputBg} ${textActive} focus:ring-1 focus:ring-emerald-500`}
+                                    />
+                                </div>
 
-                            <div className={`w-full ${formRowBg} rounded-2xl h-14 sm:h-16 px-3 flex items-center`}>
-                                <span className={`w-24 sm:w-28 text-sm sm:text-base font-medium pl-1 sm:pl-2 ${labelColor}`}>Last Name</span>
-                                <input
-                                    type="text"
-                                    defaultValue={userProfile?.family_name || ""}
-                                    className={`flex-1 h-10 sm:h-11 px-3 sm:px-4 rounded-xl text-sm sm:text-base outline-none ${inputBg} ${activeInputText} focus:ring-1 focus:ring-emerald-500`}
-                                />
-                            </div>
-                        </div>
+                                {/* Last Name — editable */}
+                                <div className={`w-full ${formRowBg} rounded-2xl h-14 sm:h-16 px-3 flex items-center`}>
+                                    <span className={`w-24 sm:w-28 text-sm sm:text-base font-medium pl-1 sm:pl-2 ${labelColor}`}>Last Name</span>
+                                    <input
+                                        ref={lastNameRef}
+                                        type="text"
+                                        defaultValue={userProfile?.lastName || ''}
+                                        className={`flex-1 h-10 sm:h-11 px-3 sm:px-4 rounded-xl text-sm sm:text-base outline-none ${inputBg} ${textActive} focus:ring-1 focus:ring-emerald-500`}
+                                    />
+                                </div>
 
-                        <div className="mt-6 sm:mt-8 flex justify-center">
-                            <button className="bg-emerald-500 hover:bg-emerald-600 text-white px-6 py-2.5 sm:px-8 sm:py-3 rounded-xl font-medium transition-colors duration-300 text-sm sm:text-base">
-                                Save Changes
-                            </button>
-                        </div>
+                                {/* Error message */}
+                                {profileError && (
+                                    <p className="text-red-400 text-xs text-center">{profileError}</p>
+                                )}
+
+                                {/* Save button */}
+                                <div className="mt-6 sm:mt-8 flex justify-center">
+                                    <button
+                                        onClick={handleSaveProfile}
+                                        disabled={isSaving}
+                                        className={`px-6 py-2.5 sm:px-8 sm:py-3 rounded-xl font-medium transition-colors duration-300 text-sm sm:text-base text-white
+                                            ${saveSuccess
+                                                ? 'bg-emerald-600 cursor-default'
+                                                : 'bg-emerald-500 hover:bg-emerald-600 disabled:opacity-60 disabled:cursor-not-allowed'
+                                            }`}
+                                    >
+                                        {isSaving ? 'Saving…' : saveSuccess ? 'Saved ✓' : 'Save Changes'}
+                                    </button>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 )}
             </div>

@@ -1,21 +1,29 @@
 // src/utils/api.js
+//
+// All Quran Foundation API calls go through the backend proxy so that:
+//   - Content API: backend injects x-auth-token (client-credentials) + x-client-id
+//   - User API:    backend injects x-auth-token (user JWT) + x-client-id
+// This avoids CORS issues and keeps credentials out of the browser.
+//
+// Pre-live OpenAPI spec:
+//   https://api-docs.quran.foundation/openAPI/user-related-apis/pre-live/v1.json
 
 const BACKEND_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 const BASE_URL = `${BACKEND_URL}/content/api/v4`;
 
 export const API_CONFIG = {
   translationId: 20,          // Sahih International
-  transliterationId: 57,      // English Transliteration (Added this)
+  transliterationId: 57,      // English Transliteration
   scriptType: 'text_uthmani', // Options: text_uthmani, text_imlaei, text_indopak
   audioId: 7                  // Mishari Rashid Al-Afasy
 };
 
-// HELPER: Clean text
+// HELPER: Clean verse text
 const cleanVerseData = (data, scriptType) => {
   if (!data || !data.verses) return data;
 
   const cleanVerses = data.verses.map(verse => {
-    // 1. Fix Arabic Script
+    // Fix Arabic Script diacritics
     if (verse[scriptType]) {
       let text = verse[scriptType];
       text = text.replace(/\u0652/g, '\u06e1'); 
@@ -69,34 +77,60 @@ export const fetchVerses = async (chapterId, page) => {
   return cleanVerseData(rawData, scriptType);
 };
 
-// API: User APIs (Requires Authentication)
+// ── User API (authenticated) ──────────────────────────────────────────────────
+// All calls route through the backend /userapi proxy.
+// The backend reads x-forwarded-auth and injects x-auth-token + x-client-id
+// per the Quran Foundation User API spec before forwarding to:
+//   Pre-live:   https://apis-prelive.quran.foundation/auth/v1/...
+//   Production: https://apis.quran.foundation/auth/v1/...
+
+/**
+ * Generic authenticated User API request through the backend proxy.
+ * @param {string} endpoint - path relative to /v1, e.g. "bookmarks" or "users/profile"
+ * @param {RequestInit} options - fetch options (method, body, etc.)
+ */
 export const fetchUserApi = async (endpoint, options = {}) => {
   const token = localStorage.getItem('access_token');
   if (!token) {
     throw new Error("No access token found. User must be logged in.");
   }
 
+  // Strip leading slash so the URL /userapi/<path> is always correct
+  const path = endpoint.startsWith('/') ? endpoint.slice(1) : endpoint;
+
   const headers = {
+    'x-forwarded-auth': token,  // Backend re-injects this as x-auth-token + x-client-id
+    'Content-Type': 'application/json',
     ...options.headers,
-    'Authorization': `Bearer ${token}`,
-    'Content-Type': options.body instanceof FormData ? undefined : 'application/json'
   };
 
-  // Remove Content-Type if it's undefined (fetch sets it automatically for FormData)
-  if (headers['Content-Type'] === undefined) {
-    delete headers['Content-Type'];
-  }
-
-  const res = await fetch(`https://prelive-api.quran.foundation${endpoint}`, {
+  const res = await fetch(`${BACKEND_URL}/userapi/${path}`, {
     ...options,
-    headers
+    headers,
   });
 
   if (!res.ok) {
-    throw new Error(`API request failed with status: ${res.status}`);
+    const errText = await res.text().catch(() => `HTTP ${res.status}`);
+    throw new Error(`User API request failed (${res.status}): ${errText}`);
   }
 
   // Handle empty responses
   if (res.status === 204) return null;
   return res.json();
 };
+
+// ── User API Helpers ──────────────────────────────────────────────────────────
+// Thin wrappers around fetchUserApi for common pre-live endpoints.
+// Paths match the pre-live OpenAPI spec exactly (without the /v1 prefix,
+// which the backend proxy prepends automatically).
+
+/** GET /v1/users/profile — get the logged-in user's Quran Foundation profile */
+export const fetchUserProfile = () =>
+  fetchUserApi('users/profile');
+
+/** PATCH /v1/users/profile — update firstName / lastName / bio etc. */
+export const updateUserProfile = (payload) =>
+  fetchUserApi('users/profile', {
+    method: 'PATCH',
+    body: JSON.stringify({ user: payload }),  // spec wraps payload in { user: {...} }
+  });

@@ -408,5 +408,109 @@ async def proxy_content_api(path: str, request: Request):
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc))
 
+# ── User API Proxy ────────────────────────────────────────────────────────────
+# Proxies requests (GET, POST, PATCH) to the Quran Foundation User API.
+#
+# The pre-live spec (apis-prelive.quran.foundation/auth) requires:
+#   - x-auth-token : the user's JWT access token
+#   - x-client-id  : the OAuth2 client ID
+#
+# The frontend sends the user's access token in the x-forwarded-auth header.
+# This backend strips it, injects the correct x-auth-token / x-client-id, and
+# forwards the request upstream. This pattern avoids exposing credentials in the
+# browser and resolves CORS issues with direct calls to the User API.
+#
+# Reference:
+#   https://api-docs.quran.foundation/openAPI/user-related-apis/pre-live/v1.json
+
+_USER_API_BASE = {
+    "prelive":    "https://apis-prelive.quran.foundation/auth",
+    "production": "https://apis.quran.foundation/auth",
+}
+
+
+@app.api_route("/userapi/{path:path}", methods=["GET", "POST", "PATCH"])
+async def proxy_user_api(path: str, request: Request):
+    """
+    Generic proxy for Quran Foundation User API (v1).
+
+    Reads the user's access token from the x-forwarded-auth header and injects
+    the required x-auth-token + x-client-id headers before forwarding.
+    """
+    client_id = os.environ.get("QF_CLIENT_ID")
+    if not client_id:
+        raise HTTPException(
+            status_code=500,
+            detail="Server OAuth configuration is missing (QF_CLIENT_ID).",
+        )
+
+    # Retrieve the user JWT forwarded by the frontend
+    user_token = request.headers.get("x-forwarded-auth")
+    if not user_token:
+        raise HTTPException(
+            status_code=401,
+            detail="Missing x-forwarded-auth header. User must be authenticated.",
+        )
+
+    env = os.environ.get("QF_ENV", "prelive")
+    user_api_base = _USER_API_BASE.get(env, _USER_API_BASE["prelive"])
+
+    # Build upstream URL: /userapi/<path> -> <user_api_base>/v1/<path>
+    upstream_url = f"{user_api_base}/v1/{path}"
+
+    # Forward query params as-is
+    params = dict(request.query_params)
+
+    # Read request body (for POST / PATCH / PUT)
+    body = await request.body()
+
+    # Build forwarded headers: inject QF auth, drop hop-by-hop/proxy headers
+    forward_headers = {
+        "x-auth-token": user_token,
+        "x-client-id":  client_id,
+        "Content-Type":  request.headers.get("content-type", "application/json"),
+        "Accept":        "application/json",
+    }
+
+    try:
+
+        async with httpx.AsyncClient() as http:
+            upstream_response = await http.request(
+                method=request.method,
+                url=upstream_url,
+                params=params,
+                headers=forward_headers,
+                content=body if body else None,
+                timeout=30.0,
+            )
+
+
+        # Return upstream response body and status to the frontend
+        if upstream_response.status_code == 204:
+            return {}   # No Content — return empty object
+
+        if upstream_response.status_code >= 400:
+            raise HTTPException(
+                status_code=upstream_response.status_code,
+                detail=upstream_response.text,
+            )
+
+        # Some endpoints return empty body on success (e.g. DELETE)
+        if not upstream_response.content:
+            return {}
+
+        return upstream_response.json()
+
+    except httpx.RequestError as exc:
+        raise HTTPException(
+            status_code=502,
+            detail=f"Failed to communicate with User API: {exc}",
+        )
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+
+
 if __name__ == "__main__":
     uvicorn.run("server:app", host="0.0.0.0", port=8000, reload=True)
