@@ -428,8 +428,7 @@ _USER_API_BASE = {
     "production": "https://apis.quran.foundation/auth",
 }
 
-
-@app.api_route("/userapi/{path:path}", methods=["GET", "POST", "PATCH"])
+@app.api_route("/userapi/{path:path}", methods=["GET", "POST", "PATCH", "PUT", "DELETE"])
 async def proxy_user_api(path: str, request: Request):
     """
     Generic proxy for Quran Foundation User API (v1).
@@ -453,9 +452,14 @@ async def proxy_user_api(path: str, request: Request):
         )
 
     env = os.environ.get("QF_ENV", "prelive")
-    user_api_base = _USER_API_BASE.get(env, _USER_API_BASE["prelive"])
+    
+    # OpenAPI spec overrides server for these paths to use quran-reflect.
+    if path.startswith("users/") or path.startswith("posts/") or path.startswith("notes/") or path.startswith("rooms/") or path.startswith("comments/") or path.startswith("tags/"):
+        user_api_base = "https://apis-prelive.quran.foundation/quran-reflect" if env == "prelive" else "https://apis.quran.foundation/quran-reflect"
+    else:
+        user_api_base = _USER_API_BASE.get(env, _USER_API_BASE["prelive"])
 
-    # Build upstream URL: /userapi/<path> -> <user_api_base>/v1/<path>
+    # Build upstream URL
     upstream_url = f"{user_api_base}/v1/{path}"
 
     # Forward query params as-is
@@ -472,10 +476,10 @@ async def proxy_user_api(path: str, request: Request):
         "Accept":        "application/json",
     }
 
-    try:
-
+    async def _do_request() -> httpx.Response:
+        """Fire a single request at the upstream User API."""
         async with httpx.AsyncClient() as http:
-            upstream_response = await http.request(
+            return await http.request(
                 method=request.method,
                 url=upstream_url,
                 params=params,
@@ -484,6 +488,17 @@ async def proxy_user_api(path: str, request: Request):
                 timeout=30.0,
             )
 
+    try:
+        # First attempt
+        try:
+            upstream_response = await _do_request()
+        except httpx.RequestError:
+            # Network glitch — retry once
+            upstream_response = await _do_request()
+
+        # On transient 502 from upstream: retry once (no loop)
+        if upstream_response.status_code == 502:
+            upstream_response = await _do_request()
 
         # Return upstream response body and status to the frontend
         if upstream_response.status_code == 204:
@@ -499,7 +514,30 @@ async def proxy_user_api(path: str, request: Request):
         if not upstream_response.content:
             return {}
 
-        return upstream_response.json()
+        response_data = upstream_response.json()
+
+        # For GET users/profile, Fetch from auth and merge.
+        if request.method == "GET" and path == "users/profile":
+            auth_base = _USER_API_BASE.get(env, _USER_API_BASE["prelive"])
+            auth_url = f"{auth_base}/v1/users/profile"
+            try:
+                async with httpx.AsyncClient() as http:
+                    auth_resp = await http.get(auth_url, headers=forward_headers, timeout=10.0)
+                    if auth_resp.status_code == 200:
+                        auth_data = auth_resp.json()
+                        # Merge auth data into response_data
+                        if isinstance(response_data, dict) and isinstance(auth_data, dict):
+                            # Usually response is the profile object or {data: profile}
+                            target = response_data.get("data", response_data) if "data" in response_data else response_data
+                            source = auth_data.get("data", auth_data) if "data" in auth_data else auth_data
+                            # Overwrite missing fields (like email) from auth_data into target
+                            for k, v in source.items():
+                                if k not in target or not target[k]:
+                                    target[k] = v
+            except Exception as e:
+                print(f"Failed to fetch auth profile for merge: {e}")
+
+        return response_data
 
     except httpx.RequestError as exc:
         raise HTTPException(

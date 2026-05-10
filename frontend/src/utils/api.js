@@ -128,9 +128,9 @@ export const fetchUserApi = async (endpoint, options = {}) => {
 export const fetchUserProfile = () =>
   fetchUserApi('users/profile');
 
-/** PATCH /v1/users/profile — update firstName / lastName / bio etc. */
+/** PUT /v1/users/profile — update firstName / lastName / bio etc. */
 export const updateUserProfile = (payload) =>
   fetchUserApi('users/profile', {
-    method: 'PATCH',
+    method: 'PUT',
     body: JSON.stringify({ user: payload }),  // spec wraps payload in { user: {...} }
   });
