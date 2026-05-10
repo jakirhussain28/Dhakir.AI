@@ -1,9 +1,9 @@
 import { useEffect, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { FaUser } from "react-icons/fa6";
+import { FaUser, FaRegUser } from "react-icons/fa6";
 import { IoArrowBack } from "react-icons/io5";
-import { TbLogout2 } from "react-icons/tb";
-import { logout } from '../../utils/auth';
+import { TbLogout2, TbLogin2 } from "react-icons/tb";
+import { logout, initiateLogin, isAuthenticated } from '../../utils/auth';
 import { fetchUserProfile, updateUserProfile } from '../../utils/api';
 
 const UserMenuModal = ({ isOpen, onClose, theme }) => {
@@ -131,18 +131,20 @@ const UserMenuModal = ({ isOpen, onClose, theme }) => {
                     >
                         <IoArrowBack className="w-6 h-6 sm:w-7 sm:h-7 hover:scale-110 transition-transform" />
                     </button>
-                    <FaUser className={`w-5 h-5 sm:w-6 sm:h-6 ${iconColor}`} />
+                    {isAuthenticated() ? <FaUser className={`w-5 h-5 sm:w-6 sm:h-6 ${iconColor}`} /> : <FaRegUser className={`w-5 h-5 sm:w-6 sm:h-6 ${iconColor}`} />}
                 </div>
 
                 {/* ── Menu View ── */}
                 {activeView === 'menu' ? (
                     <div className="space-y-4 sm:space-y-5 animate-in slide-in-from-left-4 fade-in duration-300">
-                        <button
-                            className={`w-full ${rowBase} rounded-3xl h-16 sm:h-20 px-4 sm:px-6 flex items-center justify-center transition-colors duration-300 focus:outline-none`}
-                            onClick={() => setActiveView('profile')}
-                        >
-                            <span className={`text-sm sm:text-base font-medium ${textActive}`}>Profile</span>
-                        </button>
+                        {isAuthenticated() && (
+                            <button
+                                className={`w-full ${rowBase} rounded-3xl h-16 sm:h-20 px-4 sm:px-6 flex items-center justify-center transition-colors duration-300 focus:outline-none`}
+                                onClick={() => setActiveView('profile')}
+                            >
+                                <span className={`text-sm sm:text-base font-medium ${textActive}`}>Profile</span>
+                            </button>
+                        )}
 
                         <button
                             className={`w-full ${rowBase} rounded-3xl h-16 sm:h-20 px-4 sm:px-6 flex items-center justify-center transition-colors duration-300 focus:outline-none`}
@@ -151,13 +153,23 @@ const UserMenuModal = ({ isOpen, onClose, theme }) => {
                             <span className={`text-sm sm:text-base font-medium ${textActive}`}>Streak</span>
                         </button>
 
-                        <button
-                            className={`w-full ${rowBase} rounded-3xl h-16 sm:h-20 px-4 sm:px-6 flex items-center justify-center gap-2 transition-colors duration-300 focus:outline-none`}
-                            onClick={() => { logout(); onClose(); }}
-                        >
-                            <TbLogout2 className={`w-5 h-5 sm:w-6 sm:h-6 ${textActive}`} />
-                            <span className={`text-sm sm:text-base font-medium ${textActive}`}>Logout</span>
-                        </button>
+                        {isAuthenticated() ? (
+                            <button
+                                className={`w-full ${rowBase} rounded-3xl h-16 sm:h-20 px-4 sm:px-6 flex items-center justify-center gap-2 transition-colors duration-300 focus:outline-none`}
+                                onClick={() => { logout(); onClose(); }}
+                            >
+                                <TbLogout2 className={`w-5 h-5 sm:w-6 sm:h-6 ${textActive}`} />
+                                <span className={`text-sm sm:text-base font-medium ${textActive}`}>Logout</span>
+                            </button>
+                        ) : (
+                            <button
+                                className={`w-full ${rowBase} rounded-3xl h-16 sm:h-20 px-4 sm:px-6 flex items-center justify-center gap-2 transition-colors duration-300 focus:outline-none`}
+                                onClick={() => { initiateLogin(); onClose(); }}
+                            >
+                                <TbLogin2 className={`w-5 h-5 sm:w-6 sm:h-6 ${textActive}`} />
+                                <span className={`text-sm sm:text-base font-medium ${textActive}`}>Log In</span>
+                            </button>
+                        )}
                     </div>
 
                 ) : (

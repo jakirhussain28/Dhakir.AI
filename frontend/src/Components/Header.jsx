@@ -76,9 +76,9 @@ const Header = ({
             </button>
           ) : isInitialScreen ? (
             <button
-              onClick={loggedIn ? () => setIsUserMenuOpen(true) : initiateLogin}
+              onClick={() => setIsUserMenuOpen(true)}
               className={`p-2 pt-2.5 rounded-full transition-colors ${isLight ? 'hover:bg-stone-300 text-stone-700' : 'hover:bg-gray-700 text-gray-300'}`}
-              aria-label={loggedIn ? 'User Menu' : 'Login via Quran.Foundation'}
+              aria-label={loggedIn ? 'User Menu' : 'Local User Menu'}
             >
               {loggedIn ? <FaUser size={18} aria-hidden="true" /> : <FaRegUser size={18} aria-hidden="true" />}
             </button>
@@ -179,9 +179,9 @@ const Header = ({
 
         {/* LOGIN / USER MENU BUTTON */}
         <button
-          onClick={loggedIn ? () => setIsUserMenuOpen(true) : initiateLogin}
+          onClick={() => setIsUserMenuOpen(true)}
           className={`hidden md:flex p-2 rounded-full transition-colors ${isLight ? 'hover:bg-stone-300 text-stone-700' : 'hover:bg-gray-700 text-gray-300'}`}
-          aria-label={loggedIn ? 'User Menu' : 'Login via Quran.Foundation'}
+          aria-label={loggedIn ? 'User Menu' : 'Local User Menu'}
         >
           {loggedIn ? <FaUser size={20} aria-hidden="true" /> : <FaRegUser size={20} aria-hidden="true" />}
         </button>

@@ -6,7 +6,7 @@ function StreakBox({ isLight }) {
     const [isLoggedIn, setIsLoggedIn] = useState(isAuthenticated());
     const streakDays = 1;
     const progressPercent = 34;
-    const dailyGoal = 10; // minutes
+    const dailyGoal = 15; // minutes
 
     useEffect(() => {
         // Simple check for login status change
