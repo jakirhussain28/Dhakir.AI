@@ -121,7 +121,8 @@ const UserMenuModal = ({ isOpen, onClose, theme }) => {
         >
             <div
                 // Expand width dynamically when Activity view is open to fit the calendar properly
-                className={`w-[90%] ${activeView === 'activity' ? 'max-w-[480px]' : 'max-w-[380px]'} rounded-4xl p-5 sm:p-6 border ${cardBg} relative transition-all duration-300`}
+                // className={`w-[90%] ${activeView === 'activity' ? 'max-w-[480px]' : 'max-w-[380px]'} rounded-4xl p-5 sm:p-6 border ${cardBg} relative transition-all duration-300`}
+                className={`w-[90%] ${activeView === 'activity' ? 'max-w-[480px] md:max-w-[720px]' : 'max-w-[380px]'} rounded-4xl p-5 sm:p-6 border ${cardBg} relative transition-all duration-300`}
                 onClick={(e) => e.stopPropagation()}
             >
                 {/* Header Row */}
