@@ -1,13 +1,14 @@
 import { useEffect, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { FaUser, FaRegUser } from "react-icons/fa6";
-import { IoArrowBack } from "react-icons/io5";
+import { IoArrowBack, IoCalendarSharp } from "react-icons/io5"; // <-- Imported IoCalendarSharp
 import { TbLogout2, TbLogin2 } from "react-icons/tb";
 import { logout, initiateLogin, isAuthenticated } from '../../utils/auth';
 import { fetchUserProfile, updateUserProfile } from '../../utils/api';
+import ActivityBox from './ActivityBox';
 
 const UserMenuModal = ({ isOpen, onClose, theme }) => {
-    const [activeView, setActiveView] = useState('menu'); // 'menu' or 'profile'
+    const [activeView, setActiveView] = useState('menu'); // 'menu', 'profile', or 'activity'
     const [userProfile, setUserProfile] = useState(null);
     const [profileLoading, setProfileLoading] = useState(false);
     const [profileError, setProfileError] = useState(null);
@@ -29,7 +30,6 @@ const UserMenuModal = ({ isOpen, onClose, theme }) => {
 
         fetchUserProfile()
             .then(data => {
-                // Pre-live spec: response is the profile object directly
                 setUserProfile(data?.data ?? data);
             })
             .catch(err => {
@@ -68,6 +68,7 @@ const UserMenuModal = ({ isOpen, onClose, theme }) => {
 
     const isLight = theme === 'light';
 
+    // Increase max-width if activity view is active to ensure the calendar looks clean
     const cardBg = isLight
         ? 'bg-white border-stone-400 shadow-xl'
         : 'bg-[#121212] border-gray-500 shadow-2xl';
@@ -79,14 +80,14 @@ const UserMenuModal = ({ isOpen, onClose, theme }) => {
     const formRowBg = isLight ? 'bg-stone-100' : 'bg-[#192516]';
     const inputBg = isLight ? 'bg-white' : 'bg-[#121212]';
 
-    /* FONT COLORS SYNced WITH SETTINGS MODAL */
     const textActive = isLight ? 'text-stone-800' : 'text-gray-200';
     const textInactive = isLight ? 'text-stone-400' : 'text-gray-500';
     const labelColor = isLight ? 'text-stone-500' : 'text-gray-400';
     const iconColor = isLight ? 'text-stone-400' : 'text-gray-400';
 
+    // Handle back logic for BOTH sub-menus
     const handleBack = () => {
-        if (activeView === 'profile') setActiveView('menu');
+        if (activeView === 'profile' || activeView === 'activity') setActiveView('menu');
         else onClose();
     };
 
@@ -119,7 +120,8 @@ const UserMenuModal = ({ isOpen, onClose, theme }) => {
             role="dialog"
         >
             <div
-                className={`w-[90%] max-w-[380px] rounded-4xl p-5 sm:p-6 border ${cardBg} relative transition-colors duration-300`}
+                // Expand width dynamically when Activity view is open to fit the calendar properly
+                className={`w-[90%] ${activeView === 'activity' ? 'max-w-[480px]' : 'max-w-[380px]'} rounded-4xl p-5 sm:p-6 border ${cardBg} relative transition-all duration-300`}
                 onClick={(e) => e.stopPropagation()}
             >
                 {/* Header Row */}
@@ -127,11 +129,19 @@ const UserMenuModal = ({ isOpen, onClose, theme }) => {
                     <button
                         onClick={handleBack}
                         className={`transition-colors focus:outline-none ${iconColor}`}
-                        aria-label={activeView === 'profile' ? "Back to menu" : "Close menu"}
+                        aria-label={activeView !== 'menu' ? "Back to menu" : "Close menu"}
                     >
                         <IoArrowBack className="w-6 h-6 sm:w-7 sm:h-7 hover:scale-110 transition-transform" />
                     </button>
-                    {isAuthenticated() ? <FaUser className={`w-5 h-5 sm:w-6 sm:h-6 ${iconColor}`} /> : <FaRegUser className={`w-5 h-5 sm:w-6 sm:h-6 ${iconColor}`} />}
+
+                    {/* dynamically swap icon based on active view */}
+                    {activeView === 'activity' ? (
+                        <IoCalendarSharp className={`w-5 h-5 sm:w-6 sm:h-6 ${iconColor}`} />
+                    ) : isAuthenticated() ? (
+                        <FaUser className={`w-5 h-5 sm:w-6 sm:h-6 ${iconColor}`} />
+                    ) : (
+                        <FaRegUser className={`w-5 h-5 sm:w-6 sm:h-6 ${iconColor}`} />
+                    )}
                 </div>
 
                 {/* ── Menu View ── */}
@@ -148,7 +158,7 @@ const UserMenuModal = ({ isOpen, onClose, theme }) => {
 
                         <button
                             className={`w-full ${rowBase} rounded-3xl h-16 sm:h-20 px-4 sm:px-6 flex items-center justify-center transition-colors duration-300 focus:outline-none`}
-                            onClick={onClose}
+                            onClick={() => setActiveView('activity')} // <-- Open Activity view
                         >
                             <span className={`text-sm sm:text-base font-medium ${textActive}`}>Activity</span>
                         </button>
@@ -172,78 +182,42 @@ const UserMenuModal = ({ isOpen, onClose, theme }) => {
                         )}
                     </div>
 
-                ) : (
+                ) : activeView === 'profile' ? (
                     /* ── Profile View ── */
                     <div className="animate-in slide-in-from-right-4 fade-in duration-300">
                         {profileLoading ? (
                             <div className={`text-center py-8 text-sm ${textInactive}`}>Loading profile…</div>
                         ) : (
                             <div className="space-y-3 sm:space-y-4">
-                                {/* Email — read-only */}
                                 <div className={`w-full ${formRowBg} rounded-2xl h-14 sm:h-16 px-3 flex items-center`}>
                                     <span className={`w-24 sm:w-28 text-sm sm:text-base font-medium pl-1 sm:pl-2 ${labelColor}`}>Email</span>
-                                    <input
-                                        type="text"
-                                        value={userProfile?.email || '—'}
-                                        disabled
-                                        className={`flex-1 h-10 sm:h-11 px-3 sm:px-4 rounded-xl text-sm sm:text-base outline-none ${inputBg} ${textInactive}`}
-                                    />
+                                    <input type="text" value={userProfile?.email || '—'} disabled className={`flex-1 h-10 sm:h-11 px-3 sm:px-4 rounded-xl text-sm sm:text-base outline-none ${inputBg} ${textInactive}`} />
                                 </div>
-
-                                {/* Username — read-only */}
                                 <div className={`w-full ${formRowBg} rounded-2xl h-14 sm:h-16 px-3 flex items-center`}>
                                     <span className={`w-24 sm:w-28 text-sm sm:text-base font-medium pl-1 sm:pl-2 ${labelColor}`}>Username</span>
-                                    <input
-                                        type="text"
-                                        value={userProfile?.username || '—'}
-                                        disabled
-                                        className={`flex-1 h-10 sm:h-11 px-3 sm:px-4 rounded-xl text-sm sm:text-base outline-none ${inputBg} ${textInactive}`}
-                                    />
+                                    <input type="text" value={userProfile?.username || '—'} disabled className={`flex-1 h-10 sm:h-11 px-3 sm:px-4 rounded-xl text-sm sm:text-base outline-none ${inputBg} ${textInactive}`} />
                                 </div>
-
-                                {/* First Name — editable */}
                                 <div className={`w-full ${formRowBg} rounded-2xl h-14 sm:h-16 px-3 flex items-center`}>
                                     <span className={`w-24 sm:w-28 text-sm sm:text-base font-medium pl-1 sm:pl-2 ${labelColor}`}>First Name</span>
-                                    <input
-                                        ref={firstNameRef}
-                                        type="text"
-                                        defaultValue={userProfile?.firstName || ''}
-                                        className={`flex-1 h-10 sm:h-11 px-3 sm:px-4 rounded-xl text-sm sm:text-base outline-none ${inputBg} ${textActive} focus:ring-1 focus:ring-emerald-500`}
-                                    />
+                                    <input ref={firstNameRef} type="text" defaultValue={userProfile?.firstName || ''} className={`flex-1 h-10 sm:h-11 px-3 sm:px-4 rounded-xl text-sm sm:text-base outline-none ${inputBg} ${textActive} focus:ring-1 focus:ring-emerald-500`} />
                                 </div>
-
-                                {/* Last Name — editable */}
                                 <div className={`w-full ${formRowBg} rounded-2xl h-14 sm:h-16 px-3 flex items-center`}>
                                     <span className={`w-24 sm:w-28 text-sm sm:text-base font-medium pl-1 sm:pl-2 ${labelColor}`}>Last Name</span>
-                                    <input
-                                        ref={lastNameRef}
-                                        type="text"
-                                        defaultValue={userProfile?.lastName || ''}
-                                        className={`flex-1 h-10 sm:h-11 px-3 sm:px-4 rounded-xl text-sm sm:text-base outline-none ${inputBg} ${textActive} focus:ring-1 focus:ring-emerald-500`}
-                                    />
+                                    <input ref={lastNameRef} type="text" defaultValue={userProfile?.lastName || ''} className={`flex-1 h-10 sm:h-11 px-3 sm:px-4 rounded-xl text-sm sm:text-base outline-none ${inputBg} ${textActive} focus:ring-1 focus:ring-emerald-500`} />
                                 </div>
-
-                                {/* Error message */}
-                                {profileError && (
-                                    <p className="text-red-400 text-xs text-center">{profileError}</p>
-                                )}
-
-                                {/* Save button */}
+                                {profileError && <p className="text-red-400 text-xs text-center">{profileError}</p>}
                                 <div className="mt-6 sm:mt-8 flex justify-center">
-                                    <button
-                                        onClick={handleSaveProfile}
-                                        disabled={isSaving}
-                                        className={`px-6 py-2.5 sm:px-8 sm:py-3 rounded-xl font-medium transition-colors duration-300 text-sm sm:text-base text-white
-                                            ${saveSuccess
-                                                ? 'bg-emerald-600 cursor-default'
-                                                : 'bg-emerald-500 hover:bg-emerald-600 disabled:opacity-60 disabled:cursor-not-allowed'
-                                            }`}
-                                    >
+                                    <button onClick={handleSaveProfile} disabled={isSaving} className={`px-6 py-2.5 sm:px-8 sm:py-3 rounded-xl font-medium transition-colors duration-300 text-sm sm:text-base text-white ${saveSuccess ? 'bg-emerald-600 cursor-default' : 'bg-emerald-500 hover:bg-emerald-600 disabled:opacity-60 disabled:cursor-not-allowed'}`}>
                                         {isSaving ? 'Saving…' : saveSuccess ? 'Saved ✓' : 'Save Changes'}
                                     </button>
                                 </div>
                             </div>
                         )}
+                    </div>
+                ) : (
+                    /* ── Activity View ── */
+                    <div className="animate-in slide-in-from-right-4 fade-in duration-300">
+                        <ActivityBox isLight={isLight} />
                     </div>
                 )}
             </div>

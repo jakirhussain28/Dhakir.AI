@@ -25,7 +25,8 @@ app = FastAPI(
 origins = [
     "http://localhost:5010",
     "https://dhakir.pages.dev",
-    "http://192.168.1.2:5010"
+    "http://192.168.1.2:5010",
+    "http://10.210.237.207:5010"
 ]
 
 app.add_middleware(
