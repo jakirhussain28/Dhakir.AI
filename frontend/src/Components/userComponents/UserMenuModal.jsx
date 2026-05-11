@@ -150,7 +150,7 @@ const UserMenuModal = ({ isOpen, onClose, theme }) => {
                             className={`w-full ${rowBase} rounded-3xl h-16 sm:h-20 px-4 sm:px-6 flex items-center justify-center transition-colors duration-300 focus:outline-none`}
                             onClick={onClose}
                         >
-                            <span className={`text-sm sm:text-base font-medium ${textActive}`}>Streak</span>
+                            <span className={`text-sm sm:text-base font-medium ${textActive}`}>Activity</span>
                         </button>
 
                         {isAuthenticated() ? (
