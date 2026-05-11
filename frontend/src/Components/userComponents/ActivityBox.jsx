@@ -1,15 +1,22 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { FaRegCircle, FaCircle } from "react-icons/fa";
 import { isAuthenticated } from '../../utils/auth';
 
 function ActivityBox({ isLight }) {
     const [isLoggedIn, setIsLoggedIn] = useState(isAuthenticated());
+    const scrollRef = useRef(null);
     const streakDays = 1;
     const todaysReading = 23; // minutes
 
     useEffect(() => {
         const checkAuth = () => setIsLoggedIn(isAuthenticated());
         window.addEventListener('storage', checkAuth);
+
+        // Auto-scroll to the right calendar
+        if (scrollRef.current) {
+            scrollRef.current.scrollLeft = scrollRef.current.scrollWidth;
+        }
+
         return () => window.removeEventListener('storage', checkAuth);
     }, []);
 
@@ -121,7 +128,7 @@ function ActivityBox({ isLight }) {
                 p-3 sm:p-4 md:p-6 rounded-2xl md:rounded-[24px] border w-full
                 ${isLight ? 'bg-[#f8f9fa] border-stone-200/50 shadow-inner' : 'bg-[#1c211c] border-white/5 shadow-inner'}
             `}>
-                <div className="overflow-x-auto pb-1 scrollbar-hide">
+                <div ref={scrollRef} className="overflow-x-auto pb-1 scrollbar-hide">
                     <div className="flex items-start min-w-max justify-center">
                         <DayLabels align="left" />
 
