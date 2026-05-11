@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { FaRegCircle, FaCircle } from "react-icons/fa";
 import { isAuthenticated } from '../../utils/auth';
 
-function StreakBox({ isLight }) {
+function StreakBox({ isLight, onClick }) {
     const [isLoggedIn, setIsLoggedIn] = useState(isAuthenticated());
     const streakDays = 1;
     const progressPercent = 34;
@@ -16,9 +16,12 @@ function StreakBox({ isLight }) {
     }, []);
 
     return (
-        <div className={`
-            flex items-center justify-between px-4 py-3.5 rounded-2xl border w-full h-full
-            ${isLight ? 'bg-white border-stone-200 shadow-sm' : 'bg-[#1a1b1d] border-white/5 shadow-md'}
+        <div
+            onClick={onClick}
+            className={`
+            flex items-center justify-between px-4 py-3.5 rounded-2xl border w-full h-full cursor-pointer
+            transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]
+            ${isLight ? 'bg-white border-stone-200 shadow-sm hover:border-emerald-200 hover:shadow-emerald-100' : 'bg-[#1a1b1d] border-white/5 shadow-md hover:border-emerald-500/30 hover:shadow-emerald-900/20'}
         `}>
             {/* Left side: Streak */}
             <div className="flex items-center gap-3">

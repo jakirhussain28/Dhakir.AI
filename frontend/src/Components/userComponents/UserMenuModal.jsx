@@ -7,8 +7,8 @@ import { logout, initiateLogin, isAuthenticated } from '../../utils/auth';
 import { fetchUserProfile, updateUserProfile } from '../../utils/api';
 import ActivityBox from './ActivityBox';
 
-const UserMenuModal = ({ isOpen, onClose, theme }) => {
-    const [activeView, setActiveView] = useState('menu'); // 'menu', 'profile', or 'activity'
+const UserMenuModal = ({ isOpen, onClose, theme, initialView = 'menu' }) => {
+    const [activeView, setActiveView] = useState(initialView); // 'menu', 'profile', or 'activity'
     const [userProfile, setUserProfile] = useState(null);
     const [profileLoading, setProfileLoading] = useState(false);
     const [profileError, setProfileError] = useState(null);
@@ -17,6 +17,13 @@ const UserMenuModal = ({ isOpen, onClose, theme }) => {
 
     const firstNameRef = useRef(null);
     const lastNameRef = useRef(null);
+
+    // Sync activeView with initialView when modal opens
+    useEffect(() => {
+        if (isOpen) {
+            setActiveView(initialView);
+        }
+    }, [isOpen, initialView]);
 
     // Fetch QF user profile from the pre-live API when modal opens
     useEffect(() => {
@@ -121,8 +128,7 @@ const UserMenuModal = ({ isOpen, onClose, theme }) => {
         >
             <div
                 // Expand width dynamically when Activity view is open to fit the calendar properly
-                // className={`w-[90%] ${activeView === 'activity' ? 'max-w-[480px]' : 'max-w-[380px]'} rounded-4xl p-5 sm:p-6 border ${cardBg} relative transition-all duration-300`}
-                className={`w-[90%] ${activeView === 'activity' ? 'max-w-[480px] md:max-w-[720px]' : 'max-w-[380px]'} rounded-4xl p-5 sm:p-6 border ${cardBg} relative transition-all duration-300`}
+                className={`w-[90%] ${activeView === 'activity' ? 'max-w-[480px] md:max-w-[720px]' : 'max-w-[380px]'} rounded-4xl p-5 sm:p-6 border ${cardBg} relative`}
                 onClick={(e) => e.stopPropagation()}
             >
                 {/* Header Row */}
@@ -147,7 +153,7 @@ const UserMenuModal = ({ isOpen, onClose, theme }) => {
 
                 {/* ── Menu View ── */}
                 {activeView === 'menu' ? (
-                    <div className="space-y-4 sm:space-y-5 animate-in slide-in-from-left-4 fade-in duration-300">
+                    <div className="space-y-4 sm:space-y-5">
                         {isAuthenticated() && (
                             <button
                                 className={`w-full ${rowBase} rounded-3xl h-16 sm:h-20 px-4 sm:px-6 flex items-center justify-center transition-colors duration-300 focus:outline-none`}
@@ -185,7 +191,7 @@ const UserMenuModal = ({ isOpen, onClose, theme }) => {
 
                 ) : activeView === 'profile' ? (
                     /* ── Profile View ── */
-                    <div className="animate-in slide-in-from-right-4 fade-in duration-300">
+                    <div>
                         {profileLoading ? (
                             <div className={`text-center py-8 text-sm ${textInactive}`}>Loading profile…</div>
                         ) : (
@@ -217,7 +223,7 @@ const UserMenuModal = ({ isOpen, onClose, theme }) => {
                     </div>
                 ) : (
                     /* ── Activity View ── */
-                    <div className="animate-in slide-in-from-right-4 fade-in duration-300">
+                    <div>
                         <ActivityBox isLight={isLight} />
                     </div>
                 )}

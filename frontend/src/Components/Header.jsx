@@ -22,10 +22,13 @@ const Header = ({
   handleChapterSelect,
   handleVerseJump,
   setIsSettingsOpen,
-  isInitialScreen
+  isInitialScreen,
+  isUserMenuOpen,
+  setIsUserMenuOpen,
+  userMenuView,
+  setUserMenuView
 }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const headerRef = useRef(null);
   const loggedIn = isAuthenticated();
 
@@ -76,7 +79,10 @@ const Header = ({
             </button>
           ) : isInitialScreen ? (
             <button
-              onClick={() => setIsUserMenuOpen(true)}
+              onClick={() => {
+                setUserMenuView('menu');
+                setIsUserMenuOpen(true);
+              }}
               className={`p-2 pt-2.5 rounded-full transition-colors ${isLight ? 'hover:bg-stone-300 text-stone-700' : 'hover:bg-gray-700 text-gray-300'}`}
               aria-label={loggedIn ? 'User Menu' : 'Local User Menu'}
             >
@@ -179,7 +185,10 @@ const Header = ({
 
         {/* LOGIN / USER MENU BUTTON */}
         <button
-          onClick={() => setIsUserMenuOpen(true)}
+          onClick={() => {
+            setUserMenuView('menu');
+            setIsUserMenuOpen(true);
+          }}
           className={`hidden md:flex p-2 rounded-full transition-colors ${isLight ? 'hover:bg-stone-300 text-stone-700' : 'hover:bg-gray-700 text-gray-300'}`}
           aria-label={loggedIn ? 'User Menu' : 'Local User Menu'}
         >
@@ -192,6 +201,7 @@ const Header = ({
         isOpen={isUserMenuOpen}
         onClose={() => setIsUserMenuOpen(false)}
         theme={theme}
+        initialView={userMenuView}
       />
     </div>
   );

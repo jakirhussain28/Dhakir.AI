@@ -73,6 +73,8 @@ function App() {
   const [fetchKey, setFetchKey] = useState(0); // bump to force verse refetch
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isInfoOpen, setIsInfoOpen] = useState(false);
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const [userMenuView, setUserMenuView] = useState('menu');
   const [showSplash, setShowSplash] = useState(true);
   const [isFadingOut, setIsFadingOut] = useState(false);
 
@@ -457,6 +459,10 @@ function App() {
         handleChapterSelect={handleChapterSelect}
         handleVerseJump={handleVerseJump}
         setIsSettingsOpen={setIsSettingsOpen}
+        isUserMenuOpen={isUserMenuOpen}
+        setIsUserMenuOpen={setIsUserMenuOpen}
+        userMenuView={userMenuView}
+        setUserMenuView={setUserMenuView}
         isInitialScreen={!selectedChapter || isHomeView}
       />
 
@@ -473,6 +479,10 @@ function App() {
             onRemoveBookmark={handleRemoveBookmark}
             onGoToVerse={handleGoToVerse}
             chapters={chapters}
+            onOpenActivity={() => {
+              setUserMenuView('activity');
+              setIsUserMenuOpen(true);
+            }}
           />
         ) : (
           <VerseList

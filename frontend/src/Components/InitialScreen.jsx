@@ -389,7 +389,7 @@ function GuidanceBox({ isLight, onGoToVerse }) {
 }
 
 /* ── INITIAL SCREEN ────────────────────────────────────────────── */
-function InitialScreen({ theme, lastChapter, onContinue, loadingChapters, bookmarks, onGoToBookmark, onRemoveBookmark, onGoToVerse }) {
+function InitialScreen({ theme, lastChapter, onContinue, loadingChapters, bookmarks, onGoToBookmark, onRemoveBookmark, onGoToVerse, onOpenActivity }) {
     const isLight = theme === 'light';
 
     return (
@@ -420,7 +420,7 @@ function InitialScreen({ theme, lastChapter, onContinue, loadingChapters, bookma
 
                 {/* STREAK BOX */}
                 <div className="w-full sm:flex-1 min-w-0 flex">
-                    <StreakBox isLight={isLight} />
+                    <StreakBox isLight={isLight} onClick={onOpenActivity} />
                 </div>
             </div>
         </div>
