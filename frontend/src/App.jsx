@@ -3,8 +3,8 @@ import VerseList from './Components/VerseList';
 import Header from './Components/Header';
 import InitialScreen from './Components/InitialScreen';
 import { fetchWithCache, DB_STORES } from './utils/db';
-import { fetchChapters, fetchVerses } from './utils/api';
-import { setupTokenRefresh } from './utils/auth';
+import { fetchChapters, fetchVerses, fetchCollectionBookmarks, addCollectionBookmark, deleteCollectionBookmark } from './utils/api';
+import { setupTokenRefresh, isAuthenticated } from './utils/auth';
 import brandLogo from './assets/brandLogo.svg';
 
 // IMPORT ANALYTICS
@@ -15,7 +15,7 @@ const SurahInfoModal = lazy(() => import('./Components/SurahInfoModal'));
 
 function App() {
   // HELPERS
-  const getInitialBookmarks = () => {
+  const getInitialLocalBookmarks = () => {
     try {
       const saved = localStorage.getItem('app-bookmarks');
       if (saved) return JSON.parse(saved);
@@ -50,8 +50,13 @@ function App() {
     return 1;
   };
 
-  // APP STATE
-  const [bookmarks, setBookmarks] = useState(getInitialBookmarks);
+  // APP STATE — SEPARATE LOCAL & ONLINE BOOKMARK SPACES
+  const [localBookmarks, setLocalBookmarks] = useState(getInitialLocalBookmarks);
+  const [onlineBookmarks, setOnlineBookmarks] = useState([]);
+  const [loggedIn, setLoggedIn] = useState(isAuthenticated);
+
+  // Derived: the active bookmarks depend on auth state
+  const bookmarks = loggedIn ? onlineBookmarks : localBookmarks;
   const [chapters, setChapters] = useState([]);
 
   const [selectedChapter, setSelectedChapter] = useState(getInitialChapter);
@@ -116,10 +121,20 @@ function App() {
     };
   }, []);
 
-  // Set up background token refresh
+  // Set up background token refresh + re-check auth on storage events (login/logout)
   useEffect(() => {
     setupTokenRefresh();
+
+    // Re-evaluate auth status whenever localStorage changes (e.g. after login/logout)
+    const onStorage = () => setLoggedIn(isAuthenticated());
+    window.addEventListener('storage', onStorage);
+    return () => window.removeEventListener('storage', onStorage);
   }, []);
+
+  // ── SYNC AUTH STATE every time the component re-renders from a navigation ──
+  useEffect(() => {
+    setLoggedIn(isAuthenticated());
+  }, [isHomeView]);
 
   // Persist last-read page (scoped to the current chapter)
   useEffect(() => {
@@ -128,9 +143,63 @@ function App() {
     }
   }, [selectedChapter, page]);
 
+  // Persist LOCAL bookmarks only (online bookmarks live on the server)
   useEffect(() => {
-    localStorage.setItem('app-bookmarks', JSON.stringify(bookmarks));
-  }, [bookmarks]);
+    localStorage.setItem('app-bookmarks', JSON.stringify(localBookmarks));
+  }, [localBookmarks]);
+
+  // ── FETCH ONLINE BOOKMARKS when logged in ──────────────────────────────────
+  useEffect(() => {
+    if (!loggedIn) {
+      setOnlineBookmarks([]);   // Clear online bookmarks when logged out
+      return;
+    }
+
+    let cancelled = false;
+    const loadOnlineBookmarks = async () => {
+      try {
+        const apiBookmarks = await fetchCollectionBookmarks();
+        if (cancelled) return;
+
+        // Transform API bookmark shape → app bookmark shape
+        // API: { id, type, key (chapterNumber), verseNumber, createdAt, ... }
+        // App: { chapter, verseId, verseKey, timestamp }
+        const mapped = apiBookmarks.map(bm => ({
+          chapter: { id: bm.key, name_simple: '' },  // chapter name resolved below
+          verseId: bm.verseNumber,
+          verseKey: `${bm.key}:${bm.verseNumber}`,
+          timestamp: bm.createdAt ? new Date(bm.createdAt).getTime() : Date.now(),
+          _apiId: bm.id,  // keep server ID for future reference
+        }));
+
+        setOnlineBookmarks(mapped);
+      } catch (err) {
+        console.error('Failed to fetch online bookmarks:', err);
+      }
+    };
+
+    loadOnlineBookmarks();
+    return () => { cancelled = true; };
+  }, [loggedIn]);
+
+  // ── Enrich online bookmarks with chapter names once chapters load ──
+  useEffect(() => {
+    if (chapters.length === 0 || onlineBookmarks.length === 0) return;
+
+    setOnlineBookmarks(prev => {
+      let changed = false;
+      const enriched = prev.map(bm => {
+        if (bm.chapter.name_simple) return bm;   // already enriched
+        const ch = chapters.find(c => c.id === bm.chapter.id);
+        if (ch) {
+          changed = true;
+          return { ...bm, chapter: ch };
+        }
+        return bm;
+      });
+      return changed ? enriched : prev;
+    });
+  }, [chapters, onlineBookmarks.length]);
 
   // --- UPDATED ANALYTICS LOGIC ---
   useEffect(() => {
@@ -300,34 +369,93 @@ function App() {
   };
 
   const handleToggleBookmark = (verseKey, verseId) => {
-    let actionType = 'add';
-    setBookmarks(prev => {
-      const exists = prev.some(b => b.verseKey === verseKey);
+    const [chapterStr, verseStr] = verseKey.split(':');
+    const chapterNum = parseInt(chapterStr, 10);
+    const verseNum = parseInt(verseStr, 10);
+    const exists = bookmarks.some(b => b.verseKey === verseKey);
+
+    if (loggedIn) {
+      // ── ONLINE MODE: sync with Quran Foundation API ──
       if (exists) {
-        actionType = 'remove';
-        return prev.filter(b => b.verseKey !== verseKey);
+        const target = onlineBookmarks.find(b => b.verseKey === verseKey);
+        const apiId = target?._apiId;
+        // Optimistic remove
+        setOnlineBookmarks(prev => prev.filter(b => b.verseKey !== verseKey));
+        if (apiId) {
+          deleteCollectionBookmark(apiId).catch(err => {
+            console.error('Failed to delete online bookmark:', err);
+            // Rollback on failure — re-fetch
+            fetchCollectionBookmarks().then(apiBookmarks => {
+              const mapped = apiBookmarks.map(bm => ({
+                chapter: chapters.find(c => c.id === bm.key) || { id: bm.key, name_simple: '' },
+                verseId: bm.verseNumber,
+                verseKey: `${bm.key}:${bm.verseNumber}`,
+                timestamp: bm.createdAt ? new Date(bm.createdAt).getTime() : Date.now(),
+                _apiId: bm.id,
+              }));
+              setOnlineBookmarks(mapped);
+            }).catch(() => {});
+          });
+        }
       } else {
-        return [...prev, {
+        // Optimistic add
+        setOnlineBookmarks(prev => [...prev, {
           chapter: selectedChapter,
           verseId: verseId,
           verseKey: verseKey,
-          timestamp: Date.now()
-        }];
+          timestamp: Date.now(),
+        }]);
+        addCollectionBookmark(chapterNum, verseNum).catch(err => {
+          console.error('Failed to add online bookmark:', err);
+          // Rollback on failure
+          setOnlineBookmarks(prev => prev.filter(b => b.verseKey !== verseKey));
+        });
       }
-    });
+    } else {
+      // ── LOCAL MODE: localStorage only ──
+      if (exists) {
+        setLocalBookmarks(prev => prev.filter(b => b.verseKey !== verseKey));
+      } else {
+        setLocalBookmarks(prev => [...prev, {
+          chapter: selectedChapter,
+          verseId: verseId,
+          verseKey: verseKey,
+          timestamp: Date.now(),
+        }]);
+      }
+    }
 
     logAnalyticsEvent('bookmark_toggle', {
-      action: actionType,
+      action: exists ? 'remove' : 'add',
       chapter_id: selectedChapter?.id,
-      verse_key: verseKey
+      verse_key: verseKey,
+      mode: loggedIn ? 'online' : 'local',
     });
   };
 
   const handleRemoveBookmark = (verseKey) => {
-    setBookmarks(prev => prev.filter(b => b.verseKey !== verseKey));
+    const [chapterStr, verseStr] = verseKey.split(':');
+    const chapterNum = parseInt(chapterStr, 10);
+    const verseNum = parseInt(verseStr, 10);
+
+    if (loggedIn) {
+      const target = onlineBookmarks.find(b => b.verseKey === verseKey);
+      const apiId = target?._apiId;
+      // Optimistic remove
+      setOnlineBookmarks(prev => prev.filter(b => b.verseKey !== verseKey));
+      if (apiId) {
+        deleteCollectionBookmark(apiId).catch(err => {
+          console.error('Failed to delete online bookmark:', err);
+        });
+      }
+    } else {
+      setLocalBookmarks(prev => prev.filter(b => b.verseKey !== verseKey));
+    }
+
     logAnalyticsEvent('bookmark_toggle', {
       action: 'remove',
-      verse_key: verseKey
+      verse_key: verseKey,
+      mode: loggedIn ? 'online' : 'local',
     });
   };
 

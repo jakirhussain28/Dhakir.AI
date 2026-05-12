@@ -59,7 +59,7 @@ export const initiateLogin = async () => {
     authUrl.searchParams.append('redirect_uri', REDIRECT_URI);
     authUrl.searchParams.append('code_challenge', codeChallenge);
     authUrl.searchParams.append('code_challenge_method', 'S256');
-    authUrl.searchParams.append('scope', 'openid user bookmark offline_access');
+    authUrl.searchParams.append('scope', 'openid user bookmark collection offline_access');
 
     // Append the required state and nonce parameters
     authUrl.searchParams.append('state', state);

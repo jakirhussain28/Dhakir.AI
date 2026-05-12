@@ -134,3 +134,64 @@ export const updateUserProfile = (payload) =>
     method: 'PUT',
     body: JSON.stringify({ user: payload }),  // spec wraps payload in { user: {...} }
   });
+
+// ── Collection Bookmarks (Favorites / __default__) ───────────────────────────
+// Pre-live spec: /v1/collections/__default__/...
+// Uses the virtual Favorites collection used by Quran.com
+
+/**
+ * GET /v1/collections/__default__  — fetch all bookmarks in the Favorites collection.
+ * Paginates automatically (cursor-based, max 20 per page) until all items are fetched.
+ * Returns an array of bookmark objects: { id, type, key, verseNumber, createdAt, ... }
+ */
+export const fetchCollectionBookmarks = async () => {
+  let allBookmarks = [];
+  let cursor = null;
+  let hasNext = true;
+
+  while (hasNext) {
+    const params = new URLSearchParams({ first: '20', sortBy: 'recentlyAdded' });
+    if (cursor) params.set('after', cursor);
+
+    const res = await fetchUserApi(`collections/__default__?${params.toString()}`);
+
+    const bookmarks = res?.data?.bookmarks || res?.data || [];
+    if (Array.isArray(bookmarks)) {
+      allBookmarks = [...allBookmarks, ...bookmarks];
+    }
+
+    const pagination = res?.pagination || {};
+    hasNext = pagination.hasNextPage === true;
+    cursor = pagination.endCursor || null;
+
+    // Safety: break if no cursor to avoid infinite loop
+    if (!cursor) hasNext = false;
+  }
+
+  return allBookmarks;
+};
+
+/**
+ * POST /v1/collections/__default__/bookmarks  — add an ayah bookmark to Favorites.
+ * @param {number} chapterNumber - surah number (1-114)
+ * @param {number} verseNumber   - verse number within the surah
+ */
+export const addCollectionBookmark = (chapterNumber, verseNumber) =>
+  fetchUserApi('collections/__default__/bookmarks', {
+    method: 'POST',
+    body: JSON.stringify({
+      key: chapterNumber,
+      verseNumber,
+      type: 'ayah',
+      mushafId: 1,      // QCFV2 — default Uthmani script
+    }),
+  });
+
+/**
+ * DELETE /v1/collections/__default__/bookmarks/:bookmarkId — remove a bookmark from Favorites by its ID.
+ * @param {string} bookmarkId - the API bookmark ID (e.g. "cmp1cux9t0005mp3fb8zo4k67")
+ */
+export const deleteCollectionBookmark = (bookmarkId) =>
+  fetchUserApi(`collections/__default__/bookmarks/${bookmarkId}`, {
+    method: 'DELETE',
+  });
