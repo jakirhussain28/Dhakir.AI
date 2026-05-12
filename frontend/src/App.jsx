@@ -428,25 +428,27 @@ function App() {
     <div className={`flex h-screen font-sans overflow-hidden transition-colors duration-300 ${mainBgClass}`}>
       {/* Splash Screen for Mobile/Tablet */}
       {showSplash && (
-        <div className={`fixed inset-0 z-[100] flex flex-col items-center justify-center lg:hidden ${mainBgClass} transition-opacity duration-300 ease-in-out ${isFadingOut ? 'opacity-0' : 'opacity-100'}`}>
+        <div className={`fixed inset-0 z-[100] flex flex-col items-center justify-center ${mainBgClass} transition-opacity duration-300 ease-in-out ${isFadingOut ? 'opacity-0' : 'opacity-100'}`}>
           <span className="font-serif tracking-widest text-sm mb-4">WELCOME</span>
           <img
             src={brandLogo}
             alt="Dhakir Logo"
-            className="w-56 sm:w-64 h-auto opacity-90"
+            className="w-56 sm:w-64 h-auto opacity-90 select-none pointer-events-none"
+            draggable={false}
             style={{ filter: !isLight ? 'brightness(0) invert(1)' : 'none' }}
           />
         </div>
       )}
 
       {/* Top-left logo for Desktop */}
-      {(!selectedChapter || isHomeView) && (
+      {/* {(!selectedChapter || isHomeView) && (
         <div className="fixed top-0 left-4 z-[60] pointer-events-none select-none hidden lg:block">
-          <img src={brandLogo} alt="Dhakir Logo" className="h-18 w-auto opacity-90"
+          <img src={brandLogo} alt="Dhakir Logo" className="h-18 w-auto opacity-90 select-none pointer-events-none"
+            draggable={false}
             style={{ filter: !isLight ? 'brightness(0) invert(1)' : 'none' }}
           />
         </div>
-      )}
+      )} */}
       <Header
         theme={theme}
         audioStatus={audioStatus}

@@ -27,16 +27,16 @@ function ActivityBox({ isLight }) {
             switch (level) {
                 case 0: return 'bg-stone-200'; // Missed
                 case 1: return 'bg-[#bbf7d0]'; // Read something - 15mins
-                case 2: return 'bg-[#4ade80]'; // 16 - 30mins
-                case 3: return 'bg-[#166534]'; // > 30mins
+                case 2: return 'bg-[#4ade80]'; // 16 - 35mins
+                case 3: return 'bg-[#166534]'; // > 35mins
                 default: return 'bg-transparent';
             }
         } else {
             switch (level) {
                 case 0: return 'bg-white/10';  // Missed
                 case 1: return 'bg-[#064e3b]'; // Read something - 15mins
-                case 2: return 'bg-[#22c55e]/90'; // 16 - 30mins
-                case 3: return 'bg-[#86efac]'; // > 30mins
+                case 2: return 'bg-[#22c55e]/90'; // 16 - 35mins
+                case 3: return 'bg-[#86efac]'; // > 35mins
                 default: return 'bg-transparent';
             }
         }

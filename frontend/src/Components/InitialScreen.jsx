@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { IoSend, IoClose, IoBookOutline, IoCloseCircleOutline } from "react-icons/io5";
 import { LuHistory } from "react-icons/lu";
 import { IoIosArrowForward } from "react-icons/io";
@@ -7,6 +7,7 @@ import { LuLoaderCircle } from "react-icons/lu";
 import { logAnalyticsEvent } from '../firebase';
 import StreakBox from './userComponents/StreakBox';
 import BookmarksBox from './userComponents/BookmarksBox';
+import Footer from './Footer';
 
 /* ── SHARED CARD BUTTON ────────────────────────────────────────── */
 export function ActionCard({ onClick, isLight, ariaLabel, icon, label, subtitle, subtitleArabic, accent = false, hideArrow = false }) {
@@ -391,38 +392,100 @@ function GuidanceBox({ isLight, onGoToVerse }) {
 /* ── INITIAL SCREEN ────────────────────────────────────────────── */
 function InitialScreen({ theme, lastChapter, onContinue, loadingChapters, bookmarks, onGoToBookmark, onRemoveBookmark, onGoToVerse, onOpenActivity }) {
     const isLight = theme === 'light';
+    const [isFooterVisible, setIsFooterVisible] = useState(false);
+    const lastScrollY = useRef(0);
+    const containerRef = useRef(null);
+    const footerTimeoutRef = useRef(null);
+
+    const showFooterTemporarily = () => {
+        setIsFooterVisible(true);
+        if (footerTimeoutRef.current) clearTimeout(footerTimeoutRef.current);
+        footerTimeoutRef.current = setTimeout(() => {
+            setIsFooterVisible(false);
+        }, 5000);
+    };
+
+    useEffect(() => {
+        return () => {
+            if (footerTimeoutRef.current) clearTimeout(footerTimeoutRef.current);
+        };
+    }, []);
+
+    const handleScroll = () => {
+        if (!containerRef.current) return;
+        const currentScrollY = containerRef.current.scrollTop;
+        
+        // Trigger for any significant scroll movement
+        if (Math.abs(currentScrollY - lastScrollY.current) > 5) {
+            showFooterTemporarily();
+        }
+        lastScrollY.current = currentScrollY;
+    };
+
+    // Trackpad / Mouse Wheel Support
+    const handleWheel = (e) => {
+        if (Math.abs(e.deltaY) > 2) {
+            showFooterTemporarily();
+        }
+    };
+
+    // Touch Support
+    const touchStartY = useRef(0);
+    const handleTouchStart = (e) => {
+        touchStartY.current = e.touches[0].clientY;
+    };
+    const handleTouchMove = (e) => {
+        const touchY = e.touches[0].clientY;
+        const deltaY = Math.abs(touchStartY.current - touchY);
+        
+        if (deltaY > 5) {
+            showFooterTemporarily();
+        }
+    };
 
     return (
-        <div className="h-full flex flex-col items-center justify-center gap-5 px-4 select-none">
+        <div 
+            ref={containerRef}
+            onScroll={handleScroll}
+            onWheel={handleWheel}
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            className="h-full w-full overflow-y-auto flex flex-col items-center gap-5 px-4 select-none relative custom-scrollbar"
+        >
+            {/* Inner wrapper to maintain centering but allow scroll space */}
+            <div className="flex-1 flex flex-col items-center justify-center w-full gap-5 min-h-full py-12">
+                {/* BOOKMARK BOX */}
+                <BookmarksBox bookmarks={bookmarks} isLight={isLight} onGoToBookmark={onGoToBookmark} onRemoveBookmark={onRemoveBookmark} />
 
-            {/* BOOKMARK BOX */}
-            <BookmarksBox bookmarks={bookmarks} isLight={isLight} onGoToBookmark={onGoToBookmark} onRemoveBookmark={onRemoveBookmark} />
+                {/* AI GUIDANCE BOX */}
+                <GuidanceBox isLight={isLight} onGoToVerse={onGoToVerse} />
 
-            {/* AI GUIDANCE BOX */}
-            <GuidanceBox isLight={isLight} onGoToVerse={onGoToVerse} />
+                {/* ACTION BUTTONS — side by side */}
+                <div className="flex flex-col sm:flex-row gap-3 w-full max-w-sm sm:max-w-2xl mb-8">
+                    {/* CONTINUE READING */}
+                    {lastChapter && (
+                        <div className="w-full sm:w-1/3 min-w-0 flex">
+                            <ActionCard
+                                onClick={onContinue}
+                                isLight={isLight}
+                                ariaLabel={`Continue reading Surah ${lastChapter.name_simple}`}
+                                icon={<IoBookOutline />}
+                                label="Continue Reading"
+                                subtitle={lastChapter.name_simple}
+                                accent={false}
+                            />
+                        </div>
+                    )}
 
-            {/* ACTION BUTTONS — side by side */}
-            <div className="flex flex-col sm:flex-row gap-3 w-full max-w-sm sm:max-w-2xl">
-                {/* CONTINUE READING */}
-                {lastChapter && (
-                    <div className="w-full sm:w-1/3 min-w-0 flex">
-                        <ActionCard
-                            onClick={onContinue}
-                            isLight={isLight}
-                            ariaLabel={`Continue reading Surah ${lastChapter.name_simple}`}
-                            icon={<IoBookOutline />}
-                            label="Continue Reading"
-                            subtitle={lastChapter.name_simple}
-                            accent={false}
-                        />
+                    {/* STREAK BOX */}
+                    <div className="w-full sm:flex-1 min-w-0 flex">
+                        <StreakBox isLight={isLight} onClick={onOpenActivity} />
                     </div>
-                )}
-
-                {/* STREAK BOX */}
-                <div className="w-full sm:flex-1 min-w-0 flex">
-                    <StreakBox isLight={isLight} onClick={onOpenActivity} />
                 </div>
             </div>
+
+            {/* FOOTER */}
+            <Footer isVisible={isFooterVisible} />
         </div>
     );
 }
