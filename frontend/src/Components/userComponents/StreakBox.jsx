@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { FaRegCircle, FaCircle } from "react-icons/fa";
 import { isAuthenticated } from '../../utils/auth';
+import { useStreakDays } from '../../hooks/useStreakDays';
 
 function StreakBox({ isLight, onClick }) {
     const [isLoggedIn, setIsLoggedIn] = useState(isAuthenticated());
-    const streakDays = 1;
+    const { streakDays } = useStreakDays();
     const progressPercent = 34;
     const dailyGoal = 15; // minutes
 

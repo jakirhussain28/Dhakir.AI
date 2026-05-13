@@ -1,11 +1,12 @@
 import { useState, useEffect, useRef } from 'react';
 import { FaRegCircle, FaCircle } from "react-icons/fa";
 import { isAuthenticated } from '../../utils/auth';
+import { useStreakDays } from '../../hooks/useStreakDays';
 
 function ActivityBox({ isLight }) {
     const [isLoggedIn, setIsLoggedIn] = useState(isAuthenticated());
     const scrollRef = useRef(null);
-    const streakDays = 1;
+    const { streakDays } = useStreakDays();
     const todaysReading = 23; // minutes
 
     useEffect(() => {

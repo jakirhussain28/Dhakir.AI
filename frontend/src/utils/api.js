@@ -195,3 +195,22 @@ export const deleteCollectionBookmark = (bookmarkId) =>
   fetchUserApi(`collections/__default__/bookmarks/${bookmarkId}`, {
     method: 'DELETE',
   });
+
+// ── Streaks ──────────────────────────────────────────────────────────────────
+// Pre-live spec: GET /v1/streaks/current-streak-days?type=QURAN
+// Response: { success: true, data: { days: <number> } }
+// The x-timezone header is required for accurate day/streak calculation.
+
+/**
+ * GET /v1/streaks/current-streak-days?type=QURAN — get the logged-in user's
+ * current active streak days.
+ * @returns {Promise<number>} the number of streak days (0 if unavailable)
+ */
+export const fetchCurrentStreakDays = async () => {
+  const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const res = await fetchUserApi('streaks/current-streak-days?type=QURAN', {
+    headers: { 'x-timezone': timezone },
+  });
+  // API shape: { success: true, data: { days: N } }
+  return res?.data?.days ?? 0;
+};

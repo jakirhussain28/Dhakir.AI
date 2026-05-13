@@ -477,6 +477,11 @@ async def proxy_user_api(path: str, request: Request):
         "Accept":        "application/json",
     }
 
+    # Forward x-timezone if present (required by streaks API for accurate day calc)
+    x_timezone = request.headers.get("x-timezone")
+    if x_timezone:
+        forward_headers["x-timezone"] = x_timezone
+
     async def _do_request() -> httpx.Response:
         """Fire a single request at the upstream User API."""
         async with httpx.AsyncClient() as http:
@@ -506,6 +511,9 @@ async def proxy_user_api(path: str, request: Request):
             return {}   # No Content — return empty object
 
         if upstream_response.status_code >= 400:
+            print(f"[USERAPI PROXY] {request.method} {upstream_url} -> {upstream_response.status_code}")
+            print(f"[USERAPI PROXY] Response: {upstream_response.text[:500]}")
+            print(f"[USERAPI PROXY] Request headers: {forward_headers}")
             raise HTTPException(
                 status_code=upstream_response.status_code,
                 detail=upstream_response.text,
