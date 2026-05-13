@@ -390,7 +390,7 @@ function GuidanceBox({ isLight, onGoToVerse }) {
 }
 
 /* ── INITIAL SCREEN ────────────────────────────────────────────── */
-function InitialScreen({ theme, lastChapter, onContinue, loadingChapters, bookmarks, onGoToBookmark, onRemoveBookmark, onGoToVerse, onOpenActivity }) {
+function InitialScreen({ theme, lastChapter, onContinue, loadingChapters, isLoggedIn, bookmarks, onGoToBookmark, onRemoveBookmark, onGoToVerse, onOpenActivity }) {
     const isLight = theme === 'light';
     const [isFooterVisible, setIsFooterVisible] = useState(false);
     const lastScrollY = useRef(0);
@@ -455,7 +455,7 @@ function InitialScreen({ theme, lastChapter, onContinue, loadingChapters, bookma
             {/* Inner wrapper to maintain centering but allow scroll space */}
             <div className="flex-1 flex flex-col items-center justify-center w-full gap-5 min-h-full py-12">
                 {/* BOOKMARK BOX */}
-                <BookmarksBox bookmarks={bookmarks} isLight={isLight} onGoToBookmark={onGoToBookmark} onRemoveBookmark={onRemoveBookmark} />
+                <BookmarksBox bookmarks={bookmarks} isLight={isLight} isLoggedIn={isLoggedIn} onGoToBookmark={onGoToBookmark} onRemoveBookmark={onRemoveBookmark} />
 
                 {/* AI GUIDANCE BOX */}
                 <GuidanceBox isLight={isLight} onGoToVerse={onGoToVerse} />

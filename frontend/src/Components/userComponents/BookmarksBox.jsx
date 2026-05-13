@@ -48,7 +48,8 @@ function BookmarkPill({ bookmark, isLight, onGoToBookmark, onRemoveBookmark }) {
     );
 }
 
-function BookmarksBox({ bookmarks, isLight, onGoToBookmark, onRemoveBookmark }) {
+function BookmarksBox({ bookmarks, isLight, isLoggedIn, onGoToBookmark, onRemoveBookmark }) {
+    const [isHovered, setIsHovered] = useState(false);
     const boxRef = useRef(null);
     const scrollContainerRef = useRef(null);
 
@@ -73,7 +74,7 @@ function BookmarksBox({ bookmarks, isLight, onGoToBookmark, onRemoveBookmark }) 
         return () => {
             boxEl.removeEventListener('wheel', handleWheel);
         };
-    }, []);
+    }, [bookmarks]);
 
     if (!bookmarks || bookmarks.length === 0) return null;
 
@@ -84,10 +85,29 @@ function BookmarksBox({ bookmarks, isLight, onGoToBookmark, onRemoveBookmark }) 
     const iconBg = isLight ? 'bg-amber-50' : 'bg-amber-900/20';
 
     return (
-        <div ref={boxRef} className={`w-full max-w-sm sm:max-w-2xl flex items-center gap-3 px-4 py-3.5 rounded-2xl border transition-all duration-200 ${containerBg}`}>
-            {/* Icon blob */}
-            <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${iconBg}`}>
-                <BsBookmark className={isLight ? 'text-stone-600' : 'text-white-400'} size={18} />
+        <div
+            ref={boxRef}
+            className={`w-full max-w-sm sm:max-w-2xl flex items-center gap-3 px-4 py-3.5 rounded-2xl border transition-all duration-300 ${containerBg}`}
+        >
+            {/* Icon blob / Collection Label */}
+            <div
+                onMouseEnter={() => setIsHovered(true)}
+                onMouseLeave={() => setIsHovered(false)}
+                className={`flex items-center h-9 rounded-xl transition-all duration-500 ease-in-out ${iconBg} ${isLoggedIn && isHovered ? 'pr-3.5 max-w-[200px]' : 'max-w-[36px] w-9'}`}
+            >
+                <div className="w-9 h-9 flex items-center justify-center shrink-0">
+                    <BsBookmark className={isLight ? 'text-stone-600' : 'text-white-400'} size={18} />
+                </div>
+                <div className={`overflow-hidden transition-all duration-500 ease-in-out ${isLoggedIn && isHovered ? 'max-w-[120px] opacity-100' : 'max-w-0 opacity-0'}`}>
+                    <div className="flex flex-col justify-center -space-y-0.5">
+                        <span className={`text-[9px] font-bold uppercase tracking-wider ${isLight ? 'text-stone-500' : 'text-gray-400'}`}>
+                            Collection
+                        </span>
+                        <span className={`text-[9px] font-black uppercase tracking-widest ${isLight ? 'text-stone-700' : 'text-gray-200'}`}>
+                            Favorites
+                        </span>
+                    </div>
+                </div>
             </div>
 
             {/* Bookmarks list */}

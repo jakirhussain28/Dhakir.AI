@@ -604,6 +604,7 @@ function App() {
             lastChapter={selectedChapter}
             onContinue={handleContinueReading}
             loadingChapters={loadingChapters}
+            isLoggedIn={loggedIn}
             bookmarks={bookmarks}
             onGoToBookmark={handleGoToBookmark}
             onRemoveBookmark={handleRemoveBookmark}
