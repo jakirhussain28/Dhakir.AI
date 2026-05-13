@@ -5,6 +5,7 @@ import InitialScreen from './Components/InitialScreen';
 import { fetchWithCache, DB_STORES } from './utils/db';
 import { fetchChapters, fetchVerses, fetchCollectionBookmarks, addCollectionBookmark, deleteCollectionBookmark } from './utils/api';
 import { setupTokenRefresh, isAuthenticated } from './utils/auth';
+import { getLastReadVerse } from './Components/userComponents/ContinueReadingBox';
 import brandLogo from './assets/brandLogo.svg';
 
 // IMPORT ANALYTICS
@@ -479,26 +480,43 @@ function App() {
     setIsHomeView(true);
   };
 
-  // "Continue Reading" — jump to the start of the last-read 10-verse batch
+  // "Continue Reading" — jump to the exact last-read verse
   const handleContinueReading = () => {
-    if (!selectedChapter) { setIsHomeView(false); return; }
+    const lastRead = getLastReadVerse();
 
-    // Read the persisted page for this chapter
-    let targetPage = 1;
-    try {
-      const saved = localStorage.getItem('app-lastPage');
-      if (saved) {
-        const { chapterId, page: savedPage } = JSON.parse(saved);
-        if (chapterId === selectedChapter.id) targetPage = savedPage;
+    if (!lastRead && !selectedChapter) {
+      // Nothing saved and no chapter ever selected — just leave home
+      setIsHomeView(false);
+      return;
+    }
+
+    // Determine the chapter to open
+    let chapterToOpen = selectedChapter;
+    if (lastRead) {
+      // If saved chapter differs from the current one, look it up
+      if (!chapterToOpen || chapterToOpen.id !== lastRead.chapterId) {
+        const found = chapters.find(c => c.id === lastRead.chapterId);
+        if (found) {
+          chapterToOpen = found;
+          setSelectedChapter(found);
+          localStorage.setItem('app-lastChapter', JSON.stringify(found));
+        }
       }
-    } catch { /* ignore */ }
+    }
 
-    // Reset verses so we load exactly the target batch (page = batch of 10)
+    if (!chapterToOpen) {
+      setIsHomeView(false);
+      return;
+    }
+
+    const verseNumber = lastRead?.verseNumber || 1;
+    const requiredPage = Math.ceil(verseNumber / 10);
+
     setVerses([]);
-    setPage(targetPage);
-    setStartPage(targetPage);
-    setTargetVerse(null);   // jump to batch start, not a specific verse
-    setFetchKey(k => k + 1); // always force a refetch, even if page didn't change
+    setPage(requiredPage);
+    setStartPage(requiredPage);
+    setTargetVerse({ id: verseNumber });
+    setFetchKey(k => k + 1);
     setIsHomeView(false);
   };
 

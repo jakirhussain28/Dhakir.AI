@@ -7,6 +7,7 @@ import bismillah from '/src/assets/bismillah.svg';
 import ChapterNavigation from './ChapterNavigation';
 import VerseCard from './VerseCard';
 import SkeletonLoader from './SkeletonLoader';
+import { saveLastReadVerse } from './userComponents/ContinueReadingBox';
 
 // NEW: Import Analytics
 import { logAnalyticsEvent } from '../firebase';
@@ -56,8 +57,56 @@ function VerseList({
   // observer
   const observer = useRef();
 
+  // ── READING POSITION TRACKER ──────────────────────────────────────────────
+  // Fires whenever a verse card crosses the header zone (~80px from top).
+  const readingObserver = useRef(null);
+  const lastSavedVerseKey = useRef(null);
+
   useEffect(() => {
     versesRef.current = verses;
+  }, [verses]);
+
+  /* ── READING POSITION OBSERVER SETUP ── */
+  useEffect(() => {
+    // The scroll container is the root; rootMargin crops a thin band just
+    // below the header (≈80px from top, ignoring bottom 85%).
+    // Any verse card whose top edge enters this band is the "current" verse.
+    readingObserver.current = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) {
+            const vk = entry.target.dataset.verseKey;
+            if (vk && vk !== lastSavedVerseKey.current) {
+              lastSavedVerseKey.current = vk;
+              const [chStr, vStr] = vk.split(':');
+              saveLastReadVerse(Number(chStr), Number(vStr));
+            }
+          }
+        }
+      },
+      {
+        root: scrollRef.current,
+        // top inset = header height, bottom inset = ignore lower 85% of viewport
+        rootMargin: '-80px 0px -85% 0px',
+        threshold: 0,
+      }
+    );
+
+    return () => {
+      if (readingObserver.current) readingObserver.current.disconnect();
+    };
+  }, [scrollRef]);
+
+  // Re-observe all verse cards whenever the list changes
+  useEffect(() => {
+    const obs = readingObserver.current;
+    if (!obs) return;
+
+    // Disconnect previous observations, then re-observe all current refs
+    obs.disconnect();
+    Object.values(verseRefs.current).forEach((el) => {
+      if (el) obs.observe(el);
+    });
   }, [verses]);
 
   /* SCROLL PRESERVATION */
@@ -419,6 +468,8 @@ function VerseList({
                 // scroll ref hook
                 ref={(el) => {
                   verseRefs.current[verse.verse_key] = el;
+                  // Tag element with data attribute for the reading-position observer
+                  if (el) el.dataset.verseKey = verse.verse_key;
                   if (index === triggerIndex) {
                     lastVerseElementRef(el);
                   }
