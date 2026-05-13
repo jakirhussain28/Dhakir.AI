@@ -27,6 +27,7 @@ export const USER_KEYS = {
   LAST_READ_VERSE: 'lastReadVerse',     // { chapterId, verseNumber }
   STREAK_DAYS:     'streakDays',        // number
   AI_HISTORY:      'aiGuidanceHistory', // Array of guidance history entries
+  PROFILE:         'profile',           // User profile data
 };
 
 // ── Internal: open a named IndexedDB ──────────────────────────────────────

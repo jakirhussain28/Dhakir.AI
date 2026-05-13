@@ -5,6 +5,7 @@ import { IoArrowBack, IoCalendarSharp } from "react-icons/io5"; // <-- Imported 
 import { TbLogout2, TbLogin2 } from "react-icons/tb";
 import { logout, initiateLogin, isAuthenticated } from '../../utils/auth';
 import { fetchUserProfile, updateUserProfile } from '../../utils/api';
+import { getUserData, setUserData, USER_KEYS } from '../../utils/userDb';
 import ActivityBox from './ActivityBox';
 
 const UserMenuModal = ({ isOpen, onClose, theme, initialView = 'menu' }) => {
@@ -25,25 +26,45 @@ const UserMenuModal = ({ isOpen, onClose, theme, initialView = 'menu' }) => {
         }
     }, [isOpen, initialView]);
 
-    // Fetch QF user profile from the pre-live API when modal opens
+    // Load QF user profile from IndexedDB instantly, and also refresh from API in background
     useEffect(() => {
         if (!isOpen) return;
 
         const token = localStorage.getItem('access_token');
         if (!token) return;
 
-        setProfileLoading(true);
-        setProfileError(null);
+        const loadProfile = async () => {
+            setProfileLoading(true);
+            setProfileError(null);
 
-        fetchUserProfile()
-            .then(data => {
-                setUserProfile(data?.data ?? data);
-            })
-            .catch(err => {
+            try {
+                // 1. Try to load instantly from IndexedDB
+                const cachedProfile = await getUserData(USER_KEYS.PROFILE, true);
+                if (cachedProfile) {
+                    setUserProfile(cachedProfile);
+                    setProfileLoading(false); // Stop loading spinner if we have cached data
+                }
+
+                // 2. Fetch fresh data from API in background
+                const data = await fetchUserProfile();
+                const freshProfile = data?.data ?? data;
+                if (freshProfile) {
+                    setUserProfile(freshProfile);
+                    await setUserData(USER_KEYS.PROFILE, freshProfile, true);
+                }
+            } catch (err) {
                 console.error('Failed to fetch user profile:', err);
-                setProfileError('Could not load profile.');
-            })
-            .finally(() => setProfileLoading(false));
+                // Only show error if we didn't have cached data
+                setUserProfile((prev) => {
+                    if (!prev) setProfileError('Could not load profile.');
+                    return prev;
+                });
+            } finally {
+                setProfileLoading(false);
+            }
+        };
+
+        loadProfile();
     }, [isOpen]);
 
     // Close on Escape key
@@ -108,7 +129,10 @@ const UserMenuModal = ({ isOpen, onClose, theme, initialView = 'menu' }) => {
                 lastName: lastNameRef.current?.value || '',
             };
             const updated = await updateUserProfile(payload);
-            setUserProfile(prev => ({ ...prev, ...payload, ...(updated?.data ?? {}) }));
+            const newProfile = { ...userProfile, ...payload, ...(updated?.data ?? {}) };
+            setUserProfile(newProfile);
+            await setUserData(USER_KEYS.PROFILE, newProfile, true);
+            
             setSaveSuccess(true);
             setTimeout(() => setSaveSuccess(false), 2500);
         } catch (err) {

@@ -3,7 +3,7 @@ import VerseList from './Components/VerseList';
 import Header from './Components/Header';
 import InitialScreen from './Components/InitialScreen';
 import { fetchWithCache, DB_STORES } from './utils/db';
-import { fetchChapters, fetchVerses, fetchCollectionBookmarks, addCollectionBookmark, deleteCollectionBookmark } from './utils/api';
+import { fetchChapters, fetchVerses, fetchCollectionBookmarks, addCollectionBookmark, deleteCollectionBookmark, fetchUserProfile } from './utils/api';
 import { setupTokenRefresh, isAuthenticated } from './utils/auth';
 import { getUserData, setUserData, migrateFromLocalStorage, USER_KEYS } from './utils/userDb';
 import brandLogo from './assets/brandLogo.svg';
@@ -200,6 +200,37 @@ function App() {
     loadOnlineBookmarks();
     return () => { cancelled = true; };
   }, [loggedIn]);
+
+  // ── FETCH USER PROFILE when logged in ──────────────────────────────────────
+  useEffect(() => {
+    if (!loggedIn) return;
+    
+    let retryCount = 0;
+    const maxRetries = 3;
+    let timeoutId;
+
+    const loadProfile = async () => {
+      try {
+        const data = await fetchUserProfile();
+        const profileData = data?.data ?? data;
+        if (profileData) {
+          setUserData(USER_KEYS.PROFILE, profileData, true);
+        }
+      } catch (err) {
+        console.error(`Failed to fetch and save user profile (attempt ${retryCount + 1}):`, err);
+        if (retryCount < maxRetries) {
+          retryCount++;
+          // Exponential backoff: 2s, 4s, 6s
+          timeoutId = setTimeout(loadProfile, 2000 * retryCount); 
+        }
+      }
+    };
+
+    loadProfile();
+
+    return () => clearTimeout(timeoutId);
+  }, [loggedIn]);
+
 
   // Enrich online bookmarks with chapter names once chapters load
   useEffect(() => {
