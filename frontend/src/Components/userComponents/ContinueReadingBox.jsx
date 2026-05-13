@@ -6,9 +6,6 @@ import { isAuthenticated } from '../../utils/auth';
 import { fetchReadingSessions, postReadingSession, fetchChapters } from '../../utils/api';
 
 // ── "Local-First, Sync-Second" debounce config ───────────────────────────────
-// The QF API auto-merges sessions within 20 minutes and returns 429 if hit too
-// frequently.  We debounce POST calls so that at most one request fires every
-// SYNC_INTERVAL_MS, batching rapid IntersectionObserver updates into one call.
 const SYNC_INTERVAL_MS = 30_000; // 30 seconds
 
 // Module-level state shared across all component instances / calls:
@@ -16,40 +13,20 @@ let _pendingSync = null;   // { chapterId, verseNumber } queued for next POST
 let _syncTimerId = null;   // setTimeout id for the flush
 let _lastSyncTime = 0;      // Date.now() of last successful POST
 
-/**
- * Reads the persisted last-read verse from the active user DB.
- * Shape: { chapterId: number, verseNumber: number }
- *
- * This is an async wrapper — callers that need sync access (like App.jsx)
- * should use getUserData directly.
- */
 export async function getLastReadVerse() {
     return getUserData(USER_KEYS.LAST_READ_VERSE, isAuthenticated());
 }
 
-/**
- * Persists the current reading position (chapter + verse).
- *
- * ── LOCAL-FIRST ──
- * IndexedDB is ALWAYS written synchronously (well, micro-task–level) for both
- * local and authenticated users.  This guarantees the UI instantly reflects the
- * latest position even while offline or before the API round-trip completes.
- *
- * ── SYNC-SECOND (authenticated only) ──
- * For logged-in users the position is also synced to the Quran Foundation API
- * via POST /v1/reading-sessions.  To prevent 429 "Too many requests" errors
- * the call is coalesced/debounced: only the *most recent* position is sent,
- * and no more often than once every SYNC_INTERVAL_MS (30 s).
- */
+
 export function saveLastReadVerse(chapterId, verseNumber) {
-    // ① Always write to local IndexedDB first (never blocks, never throws)
+    // Always write to local IndexedDB first (never blocks, never throws)
     const loggedIn = isAuthenticated();
     setUserData(USER_KEYS.LAST_READ_VERSE, { chapterId, verseNumber }, loggedIn);
 
-    // ② If NOT authenticated, we're done — local storage is the source of truth
+    // If NOT authenticated, we're done — local storage is the source of truth
     if (!loggedIn) return;
 
-    // ③ Queue this position for the next API sync
+    // Queue this position for the next API sync
     _pendingSync = { chapterId, verseNumber };
 
     // If a flush is already scheduled, don't schedule another — the existing
@@ -90,12 +67,6 @@ function ContinueReadingBox({ lastChapter, isLight, onContinue }) {
     const [lastRead, setLastRead] = useState(null);
 
     // ── Load data on mount ──────────────────────────────────────────────────
-    // Step 1: Read from local IndexedDB (instant, works offline).
-    // Step 2: If authenticated, also fetch from the QF API once and merge.
-    //
-    // NOTE: No useRef guard here — React Strict Mode double-fires effects in
-    // dev, and the `cancelled` flag correctly discards the first run's results
-    // while allowing the second run to complete.
     useEffect(() => {
         let cancelled = false;
 

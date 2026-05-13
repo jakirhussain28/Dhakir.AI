@@ -1,13 +1,3 @@
-// src/utils/api.js
-//
-// All Quran Foundation API calls go through the backend proxy so that:
-//   - Content API: backend injects x-auth-token (client-credentials) + x-client-id
-//   - User API:    backend injects x-auth-token (user JWT) + x-client-id
-// This avoids CORS issues and keeps credentials out of the browser.
-//
-// Pre-live OpenAPI spec:
-//   https://api-docs.quran.foundation/openAPI/user-related-apis/pre-live/v1.json
-
 const BACKEND_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 const BASE_URL = `${BACKEND_URL}/content/api/v4`;
 
@@ -77,13 +67,6 @@ export const fetchVerses = async (chapterId, page) => {
   return cleanVerseData(rawData, scriptType);
 };
 
-// ── User API (authenticated) ──────────────────────────────────────────────────
-// All calls route through the backend /userapi proxy.
-// The backend reads x-forwarded-auth and injects x-auth-token + x-client-id
-// per the Quran Foundation User API spec before forwarding to:
-//   Pre-live:   https://apis-prelive.quran.foundation/auth/v1/...
-//   Production: https://apis.quran.foundation/auth/v1/...
-
 /**
  * Generic authenticated User API request through the backend proxy.
  * @param {string} endpoint - path relative to /v1, e.g. "bookmarks" or "users/profile"
@@ -120,9 +103,6 @@ export const fetchUserApi = async (endpoint, options = {}) => {
 };
 
 // ── User API Helpers ──────────────────────────────────────────────────────────
-// Thin wrappers around fetchUserApi for common pre-live endpoints.
-// Paths match the pre-live OpenAPI spec exactly (without the /v1 prefix,
-// which the backend proxy prepends automatically).
 
 /** GET /v1/users/profile — get the logged-in user's Quran Foundation profile */
 export const fetchUserProfile = () =>
@@ -136,9 +116,6 @@ export const updateUserProfile = (payload) =>
   });
 
 // ── Collection Bookmarks (Favorites / __default__) ───────────────────────────
-// Pre-live spec: /v1/collections/__default__/...
-// Uses the virtual Favorites collection used by Quran.com
-
 /**
  * GET /v1/collections/__default__  — fetch all bookmarks in the Favorites collection.
  * Paginates automatically (cursor-based, max 20 per page) until all items are fetched.
@@ -183,7 +160,7 @@ export const addCollectionBookmark = (chapterNumber, verseNumber) =>
       key: chapterNumber,
       verseNumber,
       type: 'ayah',
-      mushafId: 1,      // QCFV2 — default Uthmani script
+      mushafId: 4,
     }),
   });
 
@@ -197,15 +174,7 @@ export const deleteCollectionBookmark = (bookmarkId) =>
   });
 
 // ── Streaks ──────────────────────────────────────────────────────────────────
-// Pre-live spec: GET /v1/streaks/current-streak-days?type=QURAN
-// Response: { success: true, data: { days: <number> } }
-// The x-timezone header is required for accurate day/streak calculation.
 
-/**
- * GET /v1/streaks/current-streak-days?type=QURAN — get the logged-in user's
- * current active streak days.
- * @returns {Promise<number>} the number of streak days (0 if unavailable)
- */
 export const fetchCurrentStreakDays = async () => {
   const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
   const res = await fetchUserApi('streaks/current-streak-days?type=QURAN', {
@@ -216,17 +185,7 @@ export const fetchCurrentStreakDays = async () => {
 };
 
 // ── Reading Sessions ─────────────────────────────────────────────────────────
-// Pre-live spec:
-//   GET  /v1/reading-sessions  — paginated list, most-recent first
-//   POST /v1/reading-sessions  — upsert latest reading location
-//
-// The API auto-merges sessions within a 20-minute window so callers should
-// already debounce before calling postReadingSession.
 
-/**
- * GET /v1/reading-sessions?first=1 — fetch the most recent reading session.
- * Returns { chapterNumber, verseNumber } or null if none exist.
- */
 export const fetchReadingSessions = async () => {
   const res = await fetchUserApi('reading-sessions?first=1');
   // API shape: { success: true, data: [{ chapterNumber, verseNumber, ... }] }

@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { FaUser, FaRegUser } from "react-icons/fa6";
-import { IoArrowBack, IoCalendarSharp } from "react-icons/io5"; // <-- Imported IoCalendarSharp
+import { IoArrowBack, IoCalendarSharp } from "react-icons/io5";
 import { TbLogout2, TbLogin2 } from "react-icons/tb";
 import { logout, initiateLogin, isAuthenticated } from '../../utils/auth';
 import { fetchUserProfile, updateUserProfile } from '../../utils/api';

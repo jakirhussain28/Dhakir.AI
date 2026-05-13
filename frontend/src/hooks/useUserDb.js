@@ -1,22 +1,6 @@
-// src/hooks/useUserDb.js
-//
-// React hook that gives components reactive access to the active user DB
-// (localUserDB when not authenticated, qfUserDB when logged in).
-//
-// Usage:
-//   const { get, set, del, loading } = useUserDb(isLoggedIn);
-//   const bookmarks = await get(USER_KEYS.BOOKMARKS);
-//   await set(USER_KEYS.BOOKMARKS, updatedList);
-
 import { useCallback, useRef } from 'react';
 import { getUserData, setUserData, deleteUserData } from '../utils/userDb';
 
-/**
- * Thin convenience hook — binds the isLoggedIn flag so callers don't need
- * to pass it on every call.
- *
- * @param {boolean} isLoggedIn — pass the current auth state
- */
 export function useUserDb(isLoggedIn) {
   // Keep a stable reference to the latest isLoggedIn value
   const authRef = useRef(isLoggedIn);

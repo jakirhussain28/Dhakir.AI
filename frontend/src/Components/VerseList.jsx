@@ -1,5 +1,4 @@
 import { useState, useRef, useEffect, useCallback, useLayoutEffect } from 'react';
-// import { ArrowUp, Loader } from 'lucide-react';
 import { FaArrowUp } from "react-icons/fa6";
 import { LuLoaderCircle } from "react-icons/lu";
 import logo from '/src/assets/logo.svg';

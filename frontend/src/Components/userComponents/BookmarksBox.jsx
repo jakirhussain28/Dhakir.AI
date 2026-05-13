@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { BsBookmark } from "react-icons/bs";
 import { IoCloseCircleOutline } from "react-icons/io5";
 

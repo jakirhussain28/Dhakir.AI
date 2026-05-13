@@ -182,14 +182,6 @@ async def refresh_token(request: RefreshTokenRequest):
         raise HTTPException(status_code=502, detail=f"Failed to communicate with Auth server: {str(e)}")
 
 # ── Quran Foundation Content API Token Management ─────────────────────────────
-# Implements the Client Credentials token lifecycle as described in:
-# https://api-docs.quran.foundation/docs/quickstart/token-management
-#
-# Rules enforced:
-#  • cache access_token + expires_at; re-request 30 s before expiry
-#  • NO refresh_token logic (Client Credentials flow has none)
-#  • only one token request in flight at a time (asyncio.Lock double-check)
-#  • on 401, clear cache → re-request once → retry once (no loop)
 
 class QfTokenCache:
     """
@@ -276,15 +268,6 @@ qf_cache = QfTokenCache()
 
 
 # ── First Authenticated Content API Call: GET /content/api/v4/chapters ────────
-# Implements the verified first call described in:
-# https://api-docs.quran.foundation/docs/quickstart/first-api-call
-#
-# Design decisions:
-#  • Reuses qf_cache (no per-request token fetch)
-#  • Sends both required headers: x-auth-token and x-client-id
-#  • Validates that the upstream response contains a 'chapters' list
-#  • 401 → clear cache → re-request once → retry once (no loop)
-#  • No credentials are returned to the frontend
 
 @app.get("/api/chapters")
 async def get_chapters(language: str = "en"):
@@ -360,9 +343,7 @@ async def get_chapters(language: str = "en"):
 
 
 # ── Content API Proxy ─────────────────────────────────────────────────────────
-# Proxies GET requests to the Quran Foundation Content API, injecting the
-# required x-auth-token and x-client-id headers.  On a 401 the token cache is
-# cleared and the request is retried exactly once (no loop).
+
 @app.get("/content/api/v4/{path:path}")
 async def proxy_content_api(path: str, request: Request):
     client_id = os.environ.get("QF_CLIENT_ID")
@@ -410,19 +391,6 @@ async def proxy_content_api(path: str, request: Request):
         raise HTTPException(status_code=500, detail=str(exc))
 
 # ── User API Proxy ────────────────────────────────────────────────────────────
-# Proxies requests (GET, POST, PATCH) to the Quran Foundation User API.
-#
-# The pre-live spec (apis-prelive.quran.foundation/auth) requires:
-#   - x-auth-token : the user's JWT access token
-#   - x-client-id  : the OAuth2 client ID
-#
-# The frontend sends the user's access token in the x-forwarded-auth header.
-# This backend strips it, injects the correct x-auth-token / x-client-id, and
-# forwards the request upstream. This pattern avoids exposing credentials in the
-# browser and resolves CORS issues with direct calls to the User API.
-#
-# Reference:
-#   https://api-docs.quran.foundation/openAPI/user-related-apis/pre-live/v1.json
 
 _USER_API_BASE = {
     "prelive":    "https://apis-prelive.quran.foundation/auth",

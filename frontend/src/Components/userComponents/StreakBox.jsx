@@ -6,8 +6,9 @@ import { useStreakDays } from '../../hooks/useStreakDays';
 function StreakBox({ isLight, onClick }) {
     const [isLoggedIn, setIsLoggedIn] = useState(isAuthenticated());
     const { streakDays } = useStreakDays();
-    const progressPercent = 34;
-    const dailyGoal = 15; // minutes
+    const dailyGoal = 15; // 15minutes daily reading
+    const progressPercent = 0; // it becomes 100% when user completes 15 minutes daily reading
+
 
     useEffect(() => {
         // Simple check for login status change

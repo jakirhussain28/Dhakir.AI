@@ -1,12 +1,3 @@
-// src/hooks/useStreakDays.js
-//
-// Shared hook consumed by both StreakBox and ActivityBox so they
-// display the same streak-days value without duplicating fetch logic.
-//
-// For authenticated users it calls GET /v1/streaks/current-streak-days?type=QURAN
-// through the backend proxy.  For local (unauthenticated) users it
-// falls back to the locally-persisted streak value in localUserDB (defaults to 0).
-
 import { useState, useEffect } from 'react';
 import { isAuthenticated } from '../utils/auth';
 import { fetchCurrentStreakDays } from '../utils/api';

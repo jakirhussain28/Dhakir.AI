@@ -7,7 +7,7 @@ function ActivityBox({ isLight }) {
     const [isLoggedIn, setIsLoggedIn] = useState(isAuthenticated());
     const scrollRef = useRef(null);
     const { streakDays } = useStreakDays();
-    const todaysReading = 23; // minutes
+    const todaysReading = 230; // this shows total reading time for today in seconds which can be shown in hours and mins
 
     useEffect(() => {
         const checkAuth = () => setIsLoggedIn(isAuthenticated());
@@ -21,7 +21,7 @@ function ActivityBox({ isLight }) {
         return () => window.removeEventListener('storage', checkAuth);
     }, []);
 
-    // Helper to get exact colors based on the tier and theme
+    // Helper to get exact colors based on the time (in seconds) tier and theme
     const getColorClass = (level) => {
         if (level === null) return 'bg-transparent';
         if (isLight) {
@@ -119,8 +119,8 @@ function ActivityBox({ isLight }) {
 
                 <div className="flex items-center flex-1 justify-end ml-2 md:ml-3">
                     <span className={`text-[12px] sm:text-sm md:text-[21px] font-medium text-right ${isLight ? 'text-stone-500' : 'text-gray-400'}`}>
-                        Today's Reading: {todaysReading} mins
-                    </span>
+                        Today's Reading: {todaysReading} seconds
+                    </span>  {/*TODO: convert seconds to hours and minutes if less than 60 minutes then show only minutes */}
                 </div>
             </div>
 
