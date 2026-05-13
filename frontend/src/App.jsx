@@ -1,11 +1,11 @@
-import { useState, useEffect, useRef, lazy, Suspense } from 'react';
+import { useState, useEffect, useRef, lazy, Suspense, useCallback } from 'react';
 import VerseList from './Components/VerseList';
 import Header from './Components/Header';
 import InitialScreen from './Components/InitialScreen';
 import { fetchWithCache, DB_STORES } from './utils/db';
 import { fetchChapters, fetchVerses, fetchCollectionBookmarks, addCollectionBookmark, deleteCollectionBookmark } from './utils/api';
 import { setupTokenRefresh, isAuthenticated } from './utils/auth';
-import { getLastReadVerse } from './Components/userComponents/ContinueReadingBox';
+import { getUserData, setUserData, migrateFromLocalStorage, USER_KEYS } from './utils/userDb';
 import brandLogo from './assets/brandLogo.svg';
 
 // IMPORT ANALYTICS
@@ -15,57 +15,24 @@ const SettingsModal = lazy(() => import('./Components/SettingsModal'));
 const SurahInfoModal = lazy(() => import('./Components/SurahInfoModal'));
 
 function App() {
-  // HELPERS
-  const getInitialLocalBookmarks = () => {
-    try {
-      const saved = localStorage.getItem('app-bookmarks');
-      if (saved) return JSON.parse(saved);
-      // Fallback for migration
-      const oldSaved = localStorage.getItem('app-bookmark');
-      if (oldSaved) {
-        const parsed = JSON.parse(oldSaved);
-        return parsed ? [parsed] : [];
-      }
-      return [];
-    } catch { return []; }
-  };
-
-  // Continue Reading: always uses independently-tracked last chapter/page
-  const getInitialChapter = () => {
-    try {
-      const saved = localStorage.getItem('app-lastChapter');
-      return saved ? JSON.parse(saved) : null;
-    } catch { return null; }
-  };
-
-  const getInitialPage = () => {
-    try {
-      const chapterSaved = localStorage.getItem('app-lastChapter');
-      const pageSaved = localStorage.getItem('app-lastPage');
-      if (chapterSaved && pageSaved) {
-        const chapter = JSON.parse(chapterSaved);
-        const { chapterId, page } = JSON.parse(pageSaved);
-        if (chapterId === chapter.id) return page;
-      }
-    } catch { /* ignore */ }
-    return 1;
-  };
-
-  // APP STATE — SEPARATE LOCAL & ONLINE BOOKMARK SPACES
-  const [localBookmarks, setLocalBookmarks] = useState(getInitialLocalBookmarks);
-  const [onlineBookmarks, setOnlineBookmarks] = useState([]);
+  // ── AUTH STATE ──────────────────────────────────────────────────────────────
   const [loggedIn, setLoggedIn] = useState(isAuthenticated);
+
+  // ── APP STATE ──────────────────────────────────────────────────────────────
+  // Bookmarks: completely separate local vs online spaces
+  const [localBookmarks, setLocalBookmarks] = useState([]);
+  const [onlineBookmarks, setOnlineBookmarks] = useState([]);
 
   // Derived: the active bookmarks depend on auth state
   const bookmarks = loggedIn ? onlineBookmarks : localBookmarks;
-  const [chapters, setChapters] = useState([]);
 
-  const [selectedChapter, setSelectedChapter] = useState(getInitialChapter);
-  const [page, setPage] = useState(getInitialPage);
-  const [startPage, setStartPage] = useState(getInitialPage);
+  const [chapters, setChapters] = useState([]);
+  const [selectedChapter, setSelectedChapter] = useState(null);
+  const [page, setPage] = useState(1);
+  const [startPage, setStartPage] = useState(1);
   const [verses, setVerses] = useState([]);
   const [totalPages, setTotalPages] = useState(1);
-  const [targetVerse, setTargetVerse] = useState(null); // no auto-scroll on load; initial screen handles nav
+  const [targetVerse, setTargetVerse] = useState(null);
 
   const [loadingChapters, setLoadingChapters] = useState(true);
   const [loadingVerses, setLoadingVerses] = useState(false);
@@ -75,8 +42,8 @@ function App() {
   const stopAudioTrigger = useRef(() => { });
   const [shouldAutoPlay, setShouldAutoPlay] = useState(false);
 
-  const [isHomeView, setIsHomeView] = useState(true); // always start on initial screen
-  const [fetchKey, setFetchKey] = useState(0); // bump to force verse refetch
+  const [isHomeView, setIsHomeView] = useState(true);
+  const [fetchKey, setFetchKey] = useState(0);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isInfoOpen, setIsInfoOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
@@ -84,6 +51,7 @@ function App() {
   const [showSplash, setShowSplash] = useState(true);
   const [isFadingOut, setIsFadingOut] = useState(false);
 
+  // App-level preferences (shared, NOT user-scoped — stay in localStorage)
   const [theme, setTheme] = useState(() => localStorage.getItem('app-theme') || 'light');
 
   const [showTranslation, setShowTranslation] = useState(() => {
@@ -106,53 +74,106 @@ function App() {
     return saved ? parseInt(saved, 10) : 3;
   });
 
-  // EFFECTS
+  // Track whether initial load from IndexedDB is done
+  const [userDbReady, setUserDbReady] = useState(false);
+
+  // ── PERSIST APP PREFERENCES (localStorage — theme-level, not user data) ──
   useEffect(() => { localStorage.setItem('app-theme', theme); }, [theme]);
   useEffect(() => { localStorage.setItem('app-showTranslation', showTranslation); }, [showTranslation]);
   useEffect(() => { localStorage.setItem('app-showTransliteration', showTransliteration); }, [showTransliteration]);
   useEffect(() => { localStorage.setItem('app-onlyTranslation', onlyTranslation); }, [onlyTranslation]);
   useEffect(() => { localStorage.setItem('app-fontSize', fontSize); }, [fontSize]);
 
+  // ── SPLASH SCREEN ──────────────────────────────────────────────────────────
   useEffect(() => {
     const fadeTimer = setTimeout(() => setIsFadingOut(true), 500);
-    const removeTimer = setTimeout(() => setShowSplash(false), 800); // 500 + 300 duration
+    const removeTimer = setTimeout(() => setShowSplash(false), 800);
     return () => {
       clearTimeout(fadeTimer);
       clearTimeout(removeTimer);
     };
   }, []);
 
-  // Set up background token refresh + re-check auth on storage events (login/logout)
+  // ── TOKEN REFRESH & AUTH SYNC ──────────────────────────────────────────────
   useEffect(() => {
     setupTokenRefresh();
-
-    // Re-evaluate auth status whenever localStorage changes (e.g. after login/logout)
     const onStorage = () => setLoggedIn(isAuthenticated());
     window.addEventListener('storage', onStorage);
     return () => window.removeEventListener('storage', onStorage);
   }, []);
 
-  // ── SYNC AUTH STATE every time the component re-renders from a navigation ──
+  // Re-check auth when toggling home view (e.g. returning from callback)
   useEffect(() => {
     setLoggedIn(isAuthenticated());
   }, [isHomeView]);
 
+  // ── LOAD USER DATA FROM IndexedDB ON MOUNT & AUTH CHANGE ───────────────────
+  // This replaces all the old localStorage getInitial* helpers.
+  // Runs once on mount (after migration) and again whenever loggedIn changes.
+  const loadUserData = useCallback(async (isAuth) => {
+    try {
+      // Run one-time migration from legacy localStorage → localUserDB
+      await migrateFromLocalStorage();
+
+      const [savedBookmarks, savedChapter, savedPage, savedLastRead] = await Promise.all([
+        getUserData(USER_KEYS.BOOKMARKS, isAuth),
+        getUserData(USER_KEYS.LAST_CHAPTER, isAuth),
+        getUserData(USER_KEYS.LAST_PAGE, isAuth),
+        getUserData(USER_KEYS.LAST_READ_VERSE, isAuth),
+      ]);
+
+      if (!isAuth) {
+        // LOCAL mode — populate localBookmarks from localUserDB
+        setLocalBookmarks(Array.isArray(savedBookmarks) ? savedBookmarks : []);
+      }
+      // (Online bookmarks are fetched from the API — see separate effect)
+
+      if (savedChapter) {
+        setSelectedChapter(savedChapter);
+      }
+
+      if (savedChapter && savedPage && savedPage.chapterId === savedChapter.id) {
+        setPage(savedPage.page);
+        setStartPage(savedPage.page);
+      } else {
+        setPage(1);
+        setStartPage(1);
+      }
+
+      // Last-read verse is stored in userDb now (ContinueReadingBox reads it via getLastReadVerse)
+
+      setUserDbReady(true);
+    } catch (err) {
+      console.error('[App] Failed to load user data from IndexedDB:', err);
+      setUserDbReady(true); // still mark ready so the app isn't stuck
+    }
+  }, []);
+
+  // Initial load + re-load when auth changes
+  useEffect(() => {
+    loadUserData(loggedIn);
+  }, [loggedIn, loadUserData]);
+
+  // ── PERSIST USER DATA TO IndexedDB ─────────────────────────────────────────
+
   // Persist last-read page (scoped to the current chapter)
   useEffect(() => {
-    if (selectedChapter) {
-      localStorage.setItem('app-lastPage', JSON.stringify({ chapterId: selectedChapter.id, page }));
+    if (selectedChapter && userDbReady) {
+      setUserData(USER_KEYS.LAST_PAGE, { chapterId: selectedChapter.id, page }, loggedIn);
     }
-  }, [selectedChapter, page]);
+  }, [selectedChapter, page, loggedIn, userDbReady]);
 
-  // Persist LOCAL bookmarks only (online bookmarks live on the server)
+  // Persist LOCAL bookmarks to localUserDB (online bookmarks live on the server)
   useEffect(() => {
-    localStorage.setItem('app-bookmarks', JSON.stringify(localBookmarks));
-  }, [localBookmarks]);
+    if (userDbReady) {
+      setUserData(USER_KEYS.BOOKMARKS, localBookmarks, false);
+    }
+  }, [localBookmarks, userDbReady]);
 
   // ── FETCH ONLINE BOOKMARKS when logged in ──────────────────────────────────
   useEffect(() => {
     if (!loggedIn) {
-      setOnlineBookmarks([]);   // Clear online bookmarks when logged out
+      setOnlineBookmarks([]);
       return;
     }
 
@@ -162,15 +183,12 @@ function App() {
         const apiBookmarks = await fetchCollectionBookmarks();
         if (cancelled) return;
 
-        // Transform API bookmark shape → app bookmark shape
-        // API: { id, type, key (chapterNumber), verseNumber, createdAt, ... }
-        // App: { chapter, verseId, verseKey, timestamp }
         const mapped = apiBookmarks.map(bm => ({
-          chapter: { id: bm.key, name_simple: '' },  // chapter name resolved below
+          chapter: { id: bm.key, name_simple: '' },
           verseId: bm.verseNumber,
           verseKey: `${bm.key}:${bm.verseNumber}`,
           timestamp: bm.createdAt ? new Date(bm.createdAt).getTime() : Date.now(),
-          _apiId: bm.id,  // keep server ID for future reference
+          _apiId: bm.id,
         }));
 
         setOnlineBookmarks(mapped);
@@ -183,14 +201,14 @@ function App() {
     return () => { cancelled = true; };
   }, [loggedIn]);
 
-  // ── Enrich online bookmarks with chapter names once chapters load ──
+  // Enrich online bookmarks with chapter names once chapters load
   useEffect(() => {
     if (chapters.length === 0 || onlineBookmarks.length === 0) return;
 
     setOnlineBookmarks(prev => {
       let changed = false;
       const enriched = prev.map(bm => {
-        if (bm.chapter.name_simple) return bm;   // already enriched
+        if (bm.chapter.name_simple) return bm;
         const ch = chapters.find(c => c.id === bm.chapter.id);
         if (ch) {
           changed = true;
@@ -202,13 +220,12 @@ function App() {
     });
   }, [chapters, onlineBookmarks.length]);
 
-  // --- UPDATED ANALYTICS LOGIC ---
+  // --- ANALYTICS ---
   useEffect(() => {
     let title = "DHAKIR";
     let path = '/';
     let chapterName = 'Home';
 
-    // Check if a chapter is actually selected
     if (selectedChapter && !isHomeView) {
       title = `Surah ${selectedChapter.name_simple} | DHAKIR`;
       path = `/surah/${selectedChapter.id}`;
@@ -223,7 +240,6 @@ function App() {
       chapter_name: chapterName
     });
   }, [selectedChapter, isHomeView]);
-  // --------------------------------
 
   const contentTopRef = useRef(null);
 
@@ -297,7 +313,7 @@ function App() {
     if (chapterObj) {
       stopAudioTrigger.current(true);
 
-      setIsHomeView(false); // leave home screen when a chapter is chosen
+      setIsHomeView(false);
 
       if (selectedChapter && selectedChapter.id === chapterObj.id) return;
 
@@ -306,7 +322,8 @@ function App() {
       setStartPage(1);
       setSelectedChapter(chapterObj);
       setTargetVerse(null);
-      localStorage.setItem('app-lastChapter', JSON.stringify(chapterObj));
+      // Persist to the active user DB
+      setUserData(USER_KEYS.LAST_CHAPTER, chapterObj, loggedIn);
     }
   };
 
@@ -413,7 +430,7 @@ function App() {
         });
       }
     } else {
-      // ── LOCAL MODE: localStorage only ──
+      // ── LOCAL MODE: IndexedDB only ──
       if (exists) {
         setLocalBookmarks(prev => prev.filter(b => b.verseKey !== verseKey));
       } else {
@@ -481,25 +498,23 @@ function App() {
   };
 
   // "Continue Reading" — jump to the exact last-read verse
-  const handleContinueReading = () => {
-    const lastRead = getLastReadVerse();
+  const handleContinueReading = async () => {
+    // Read from the active user DB
+    const lastRead = await getUserData(USER_KEYS.LAST_READ_VERSE, loggedIn);
 
     if (!lastRead && !selectedChapter) {
-      // Nothing saved and no chapter ever selected — just leave home
       setIsHomeView(false);
       return;
     }
 
-    // Determine the chapter to open
     let chapterToOpen = selectedChapter;
     if (lastRead) {
-      // If saved chapter differs from the current one, look it up
       if (!chapterToOpen || chapterToOpen.id !== lastRead.chapterId) {
         const found = chapters.find(c => c.id === lastRead.chapterId);
         if (found) {
           chapterToOpen = found;
           setSelectedChapter(found);
-          localStorage.setItem('app-lastChapter', JSON.stringify(found));
+          setUserData(USER_KEYS.LAST_CHAPTER, found, loggedIn);
         }
       }
     }
@@ -533,7 +548,7 @@ function App() {
     setStartPage(requiredPage);
     setSelectedChapter(chapterObj);
     setTargetVerse({ id: verseNumber });
-    localStorage.setItem('app-lastChapter', JSON.stringify(chapterObj));
+    setUserData(USER_KEYS.LAST_CHAPTER, chapterObj, loggedIn);
   };
 
   // "Go to Bookmark" — navigate to bookmarked chapter + exact verse
@@ -563,7 +578,7 @@ function App() {
       setStartPage(requiredPage);
       setSelectedChapter(bmChapter);
       setTargetVerse({ id: verseId });
-      localStorage.setItem('app-lastChapter', JSON.stringify(bmChapter));
+      setUserData(USER_KEYS.LAST_CHAPTER, bmChapter, loggedIn);
     }
   };
 
@@ -586,15 +601,6 @@ function App() {
         </div>
       )}
 
-      {/* Top-left logo for Desktop */}
-      {/* {(!selectedChapter || isHomeView) && (
-        <div className="fixed top-0 left-4 z-[60] pointer-events-none select-none hidden lg:block">
-          <img src={brandLogo} alt="Dhakir Logo" className="h-18 w-auto opacity-90 select-none pointer-events-none"
-            draggable={false}
-            style={{ filter: !isLight ? 'brightness(0) invert(1)' : 'none' }}
-          />
-        </div>
-      )} */}
       <Header
         theme={theme}
         audioStatus={audioStatus}

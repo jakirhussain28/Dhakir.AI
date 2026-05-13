@@ -1,33 +1,37 @@
 import React, { useState, useEffect } from 'react';
 import { IoBookOutline } from "react-icons/io5";
 import { ActionCard } from '../InitialScreen';
-
-const LAST_READ_KEY = 'app-lastReadVerse';
+import { getUserData, setUserData, USER_KEYS } from '../../utils/userDb';
+import { isAuthenticated } from '../../utils/auth';
 
 /**
- * Reads the persisted last-read verse from localStorage.
+ * Reads the persisted last-read verse from the active user DB.
  * Shape: { chapterId: number, verseNumber: number }
+ *
+ * This is an async wrapper — callers that need sync access (like App.jsx)
+ * should use getUserData directly.
  */
-export function getLastReadVerse() {
-    try {
-        const raw = localStorage.getItem(LAST_READ_KEY);
-        return raw ? JSON.parse(raw) : null;
-    } catch { return null; }
+export async function getLastReadVerse() {
+    return getUserData(USER_KEYS.LAST_READ_VERSE, isAuthenticated());
 }
 
 /**
- * Persists the current reading position (chapter + verse).
+ * Persists the current reading position (chapter + verse) to the active user DB.
  */
 export function saveLastReadVerse(chapterId, verseNumber) {
-    localStorage.setItem(LAST_READ_KEY, JSON.stringify({ chapterId, verseNumber }));
+    setUserData(USER_KEYS.LAST_READ_VERSE, { chapterId, verseNumber }, isAuthenticated());
 }
 
 function ContinueReadingBox({ lastChapter, isLight, onContinue }) {
-    const [lastRead, setLastRead] = useState(getLastReadVerse);
+    const [lastRead, setLastRead] = useState(null);
 
-    // Re-read from localStorage whenever we become visible (user returns to home)
+    // Load from IndexedDB whenever we become visible (user returns to home)
     useEffect(() => {
-        setLastRead(getLastReadVerse());
+        let cancelled = false;
+        getLastReadVerse().then(data => {
+            if (!cancelled) setLastRead(data);
+        });
+        return () => { cancelled = true; };
     }, []);
 
     // If no chapter has ever been selected AND no saved verse exists, hide the box

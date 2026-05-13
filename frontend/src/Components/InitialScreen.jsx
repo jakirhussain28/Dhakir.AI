@@ -9,6 +9,8 @@ import StreakBox from './userComponents/StreakBox';
 import BookmarksBox from './userComponents/BookmarksBox';
 import ContinueReadingBox from './userComponents/ContinueReadingBox';
 import Footer from './Footer';
+import { getUserData, setUserData, USER_KEYS } from '../utils/userDb';
+import { isAuthenticated } from '../utils/auth';
 
 /* ── SHARED CARD BUTTON ────────────────────────────────────────── */
 export function ActionCard({ onClick, isLight, ariaLabel, icon, label, subtitle, subtitleArabic, accent = false, hideArrow = false }) {
@@ -70,7 +72,6 @@ export function ActionCard({ onClick, isLight, ariaLabel, icon, label, subtitle,
 
 /* ── AI GUIDANCE BOX ───────────────────────────────────────────── */
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000';
-const HISTORY_KEY = 'ai_guidance_history';
 const MAX_HISTORY = 20;
 
 const PLACEHOLDERS = [
@@ -89,15 +90,15 @@ const PLACEHOLDERS = [
     "I want to be a better person…",
 ];
 
-/* ── helpers ── */
-function loadHistory() {
+/* ── helpers: load/save AI guidance history from/to the active user DB ── */
+async function loadHistory() {
     try {
-        const raw = localStorage.getItem(HISTORY_KEY);
-        return raw ? JSON.parse(raw) : [];
+        const data = await getUserData(USER_KEYS.AI_HISTORY, isAuthenticated());
+        return Array.isArray(data) ? data : [];
     } catch { return []; }
 }
 function saveHistory(items) {
-    localStorage.setItem(HISTORY_KEY, JSON.stringify(items.slice(0, MAX_HISTORY)));
+    setUserData(USER_KEYS.AI_HISTORY, items.slice(0, MAX_HISTORY), isAuthenticated());
 }
 
 function GuidanceBox({ isLight, onGoToVerse }) {
@@ -111,9 +112,18 @@ function GuidanceBox({ isLight, onGoToVerse }) {
     const [answeredPrompt, setAnsweredPrompt] = useState(null);
 
     /* ── history state ── */
-    const [history, setHistory] = useState(loadHistory);
+    const [history, setHistory] = useState([]);
     const [showHistory, setShowHistory] = useState(false);
     const [expandedIdx, setExpandedIdx] = useState(null);
+
+    // Load history from IndexedDB on mount
+    useEffect(() => {
+        let cancelled = false;
+        loadHistory().then(data => {
+            if (!cancelled) setHistory(data);
+        });
+        return () => { cancelled = true; };
+    }, []);
 
     useEffect(() => {
         const id = setInterval(() => {

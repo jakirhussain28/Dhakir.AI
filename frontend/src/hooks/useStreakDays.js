@@ -5,11 +5,12 @@
 //
 // For authenticated users it calls GET /v1/streaks/current-streak-days?type=QURAN
 // through the backend proxy.  For local (unauthenticated) users it
-// falls back to the locally-persisted streak value (defaults to 0).
+// falls back to the locally-persisted streak value in localUserDB (defaults to 0).
 
 import { useState, useEffect } from 'react';
 import { isAuthenticated } from '../utils/auth';
 import { fetchCurrentStreakDays } from '../utils/api';
+import { getUserData, USER_KEYS } from '../utils/userDb';
 
 /**
  * @returns {{ streakDays: number, loading: boolean }}
@@ -23,9 +24,9 @@ export function useStreakDays() {
 
     const load = async () => {
       if (!isAuthenticated()) {
-        // Not logged in — fall back to local streak (stored in localStorage)
-        const local = parseInt(localStorage.getItem('local_streak_days') || '0', 10);
-        if (!cancelled) setStreakDays(local);
+        // Not logged in — fall back to local streak (stored in localUserDB)
+        const local = await getUserData(USER_KEYS.STREAK_DAYS, false);
+        if (!cancelled) setStreakDays(typeof local === 'number' ? local : 0);
         return;
       }
 
