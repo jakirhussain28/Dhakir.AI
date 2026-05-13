@@ -7,6 +7,7 @@ import { LuLoaderCircle } from "react-icons/lu";
 import { logAnalyticsEvent } from '../firebase';
 import StreakBox from './userComponents/StreakBox';
 import BookmarksBox from './userComponents/BookmarksBox';
+import ContinueReadingBox from './userComponents/ContinueReadingBox';
 import Footer from './Footer';
 
 /* ── SHARED CARD BUTTON ────────────────────────────────────────── */
@@ -463,19 +464,11 @@ function InitialScreen({ theme, lastChapter, onContinue, loadingChapters, isLogg
                 {/* ACTION BUTTONS — side by side */}
                 <div className="flex flex-col sm:flex-row gap-3 w-full max-w-sm sm:max-w-2xl mb-8">
                     {/* CONTINUE READING */}
-                    {lastChapter && (
-                        <div className="w-full sm:w-1/3 min-w-0 flex">
-                            <ActionCard
-                                onClick={onContinue}
-                                isLight={isLight}
-                                ariaLabel={`Continue reading Surah ${lastChapter.name_simple}`}
-                                icon={<IoBookOutline />}
-                                label="Continue Reading"
-                                subtitle={lastChapter.name_simple}
-                                accent={false}
-                            />
-                        </div>
-                    )}
+                    <ContinueReadingBox
+                        lastChapter={lastChapter}
+                        isLight={isLight}
+                        onContinue={onContinue}
+                    />
 
                     {/* STREAK BOX */}
                     <div className="w-full sm:flex-1 min-w-0 flex">
