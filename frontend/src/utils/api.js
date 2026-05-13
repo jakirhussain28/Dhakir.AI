@@ -214,3 +214,39 @@ export const fetchCurrentStreakDays = async () => {
   // API shape: { success: true, data: { days: N } }
   return res?.data?.days ?? 0;
 };
+
+// ── Reading Sessions ─────────────────────────────────────────────────────────
+// Pre-live spec:
+//   GET  /v1/reading-sessions  — paginated list, most-recent first
+//   POST /v1/reading-sessions  — upsert latest reading location
+//
+// The API auto-merges sessions within a 20-minute window so callers should
+// already debounce before calling postReadingSession.
+
+/**
+ * GET /v1/reading-sessions?first=1 — fetch the most recent reading session.
+ * Returns { chapterNumber, verseNumber } or null if none exist.
+ */
+export const fetchReadingSessions = async () => {
+  const res = await fetchUserApi('reading-sessions?first=1');
+  // API shape: { success: true, data: [{ chapterNumber, verseNumber, ... }] }
+  const sessions = res?.data;
+  if (Array.isArray(sessions) && sessions.length > 0) {
+    return {
+      chapterNumber: sessions[0].chapterNumber,
+      verseNumber: sessions[0].verseNumber,
+    };
+  }
+  return null;
+};
+
+/**
+ * POST /v1/reading-sessions — track or update the user's latest reading position.
+ * @param {number} chapterNumber — Surah number (1-114)
+ * @param {number} verseNumber   — Ayah number within the chapter
+ */
+export const postReadingSession = (chapterNumber, verseNumber) =>
+  fetchUserApi('reading-sessions', {
+    method: 'POST',
+    body: JSON.stringify({ chapterNumber, verseNumber }),
+  });
