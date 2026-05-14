@@ -21,7 +21,7 @@ export async function getLastReadVerse() {
     return getUserData(USER_KEYS.LAST_READ_VERSE, isAuthenticated());
 }
 
-export function cancelPendingSave() {
+export async function flushPendingSave() {
     if (_localTimerId) {
         clearTimeout(_localTimerId);
         _localTimerId = null;
@@ -30,6 +30,27 @@ export function cancelPendingSave() {
         clearTimeout(_syncTimerId);
         _syncTimerId = null;
     }
+    
+    const loggedIn = isAuthenticated();
+    const data = _pendingLocal || _pendingSync;
+    
+    if (data) {
+        if (loggedIn) {
+            try {
+                await postReadingSession(data.chapterId, data.verseNumber);
+                await getLastReadVerse(); // trigger side effects if any
+                const timestamp = Date.now();
+                await setUserData(USER_KEYS.LAST_READ_VERSE, { ...data, timestamp, isSynced: true }, true);
+            } catch {
+                const timestamp = Date.now();
+                await setUserData(USER_KEYS.LAST_READ_VERSE, { ...data, timestamp, isSynced: false }, true);
+            }
+        } else {
+            const timestamp = Date.now();
+            await setUserData(USER_KEYS.LAST_READ_VERSE, { ...data, timestamp }, false);
+        }
+    }
+
     _pendingLocal = null;
     _pendingSync = null;
 }
@@ -60,7 +81,7 @@ export function saveLastReadVerse(chapterId, verseNumber, chapterName) {
                 existing.verseNumber !== data.verseNumber;
 
             // Always update IndexedDB (either new position or just refresh timestamp)
-            await setUserData(USER_KEYS.LAST_READ_VERSE, { ...data, timestamp }, loggedIn);
+            await setUserData(USER_KEYS.LAST_READ_VERSE, { ...data, timestamp, isSynced: false }, loggedIn);
 
             if (!loggedIn) return;
 
@@ -98,6 +119,12 @@ async function _flushSync() {
 
     try {
         await postReadingSession(data.chapterId, data.verseNumber);
+        
+        // Mark as synced locally
+        const existing = await getLastReadVerse();
+        if (existing && existing.chapterId === data.chapterId && existing.verseNumber === data.verseNumber) {
+            await setUserData(USER_KEYS.LAST_READ_VERSE, { ...existing, isSynced: true }, true);
+        }
     } catch (err) {
         // On failure, re-queue so the next scroll event will retry.
         // Don't spam — the next debounce window will handle it.
@@ -130,6 +157,16 @@ function ContinueReadingBox({ lastChapter, isLight, onContinue }) {
 
             // ② If authenticated, pull the latest reading session from the API
             if (loggedIn) {
+                // Push any unsynced local data first
+                if (localData && localData.isSynced === false && localData.chapterId && localData.verseNumber) {
+                    try {
+                        await postReadingSession(localData.chapterId, localData.verseNumber);
+                        localData.isSynced = true;
+                        await setUserData(USER_KEYS.LAST_READ_VERSE, localData, true);
+                    } catch (err) {
+                        console.warn('[ContinueReading] Failed to sync pending data on mount:', err.message);
+                    }
+                }
                 try {
                     const remote = await fetchReadingSessions();
 

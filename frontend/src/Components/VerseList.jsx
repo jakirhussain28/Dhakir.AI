@@ -6,7 +6,7 @@ import bismillah from '/src/assets/bismillah.svg';
 import ChapterNavigation from './ChapterNavigation';
 import VerseCard from './VerseCard';
 import SkeletonLoader from './SkeletonLoader';
-import { saveLastReadVerse } from './userComponents/ContinueReadingBox';
+import { saveLastReadVerse, flushPendingSave } from './userComponents/ContinueReadingBox';
 
 // NEW: Import Analytics
 import { logAnalyticsEvent } from '../firebase';
@@ -96,9 +96,11 @@ function VerseList({
     };
   }, [scrollRef]);
 
-  // the 1-second local save and 3-second API sync can still finish in the background.
+  // We flush pending saves when the user navigates away so they don't get lost
+  // or sit unsynced in the background.
   useEffect(() => {
     return () => {
+      flushPendingSave();
     };
   }, [selectedChapter]);
 
