@@ -188,12 +188,13 @@ export const fetchCurrentStreakDays = async () => {
 
 export const fetchReadingSessions = async () => {
   const res = await fetchUserApi('reading-sessions?first=1');
-  // API shape: { success: true, data: [{ chapterNumber, verseNumber, ... }] }
+  // API shape: { success: true, data: [{ chapterNumber, verseNumber, updatedAt, ... }] }
   const sessions = res?.data;
   if (Array.isArray(sessions) && sessions.length > 0) {
     return {
       chapterNumber: sessions[0].chapterNumber,
       verseNumber: sessions[0].verseNumber,
+      updatedAt: sessions[0].updatedAt ? new Date(sessions[0].updatedAt).getTime() : 0,
     };
   }
   return null;

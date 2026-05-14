@@ -78,7 +78,7 @@ function VerseList({
             if (vk && vk !== lastSavedVerseKey.current) {
               lastSavedVerseKey.current = vk;
               const [chStr, vStr] = vk.split(':');
-              saveLastReadVerse(Number(chStr), Number(vStr));
+              saveLastReadVerse(Number(chStr), Number(vStr), selectedChapter?.name_simple);
             }
           }
         }

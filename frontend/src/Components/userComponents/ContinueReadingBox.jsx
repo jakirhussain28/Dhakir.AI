@@ -6,22 +6,23 @@ import { isAuthenticated } from '../../utils/auth';
 import { fetchReadingSessions, postReadingSession, fetchChapters } from '../../utils/api';
 
 // ── "Local-First, Sync-Second" debounce config ───────────────────────────────
-const SYNC_INTERVAL_MS = 30_000; // 30 seconds
+const DEBOUNCE_MS = 3000; // 3 seconds
 
 // Module-level state shared across all component instances / calls:
 let _pendingSync = null;   // { chapterId, verseNumber } queued for next POST
 let _syncTimerId = null;   // setTimeout id for the flush
-let _lastSyncTime = 0;      // Date.now() of last successful POST
+let _isSyncing = false;    // prevent concurrent API requests
 
 export async function getLastReadVerse() {
     return getUserData(USER_KEYS.LAST_READ_VERSE, isAuthenticated());
 }
 
 
-export function saveLastReadVerse(chapterId, verseNumber) {
+export function saveLastReadVerse(chapterId, verseNumber, chapterName) {
     // Always write to local IndexedDB first (never blocks, never throws)
     const loggedIn = isAuthenticated();
-    setUserData(USER_KEYS.LAST_READ_VERSE, { chapterId, verseNumber }, loggedIn);
+    const timestamp = Date.now();
+    setUserData(USER_KEYS.LAST_READ_VERSE, { chapterId, verseNumber, chapterName, timestamp }, loggedIn);
 
     // If NOT authenticated, we're done — local storage is the source of truth
     if (!loggedIn) return;
@@ -29,37 +30,41 @@ export function saveLastReadVerse(chapterId, verseNumber) {
     // Queue this position for the next API sync
     _pendingSync = { chapterId, verseNumber };
 
-    // If a flush is already scheduled, don't schedule another — the existing
-    // timer will pick up the latest _pendingSync value when it fires.
-    if (_syncTimerId) return;
-
-    const elapsed = Date.now() - _lastSyncTime;
-
-    if (elapsed >= SYNC_INTERVAL_MS) {
-        // Enough time has passed — flush immediately
-        _flushSync();
-    } else {
-        // Schedule a flush for the remainder of the interval
-        _syncTimerId = setTimeout(_flushSync, SYNC_INTERVAL_MS - elapsed);
+    // If a flush is already scheduled, clear it to reset the debounce timer
+    if (_syncTimerId) {
+        clearTimeout(_syncTimerId);
     }
+
+    // Schedule a flush after the user stops updating the position for DEBOUNCE_MS
+    _syncTimerId = setTimeout(() => {
+        _flushSync();
+    }, DEBOUNCE_MS);
 }
 
 /** @private Sends the queued position to the API and resets state. */
 async function _flushSync() {
-    _syncTimerId = null;
+    if (_isSyncing) return; // Prevent concurrent requests
 
     const data = _pendingSync;
     if (!data) return;
+
+    _syncTimerId = null;
     _pendingSync = null;
+    _isSyncing = true;
 
     try {
         await postReadingSession(data.chapterId, data.verseNumber);
-        _lastSyncTime = Date.now();
     } catch (err) {
         // On failure, re-queue so the next scroll event will retry.
         // Don't spam — the next debounce window will handle it.
         console.warn('[ContinueReading] API sync failed, will retry:', err.message);
         if (!_pendingSync) _pendingSync = data;
+    } finally {
+        _isSyncing = false;
+        // If pendingSync got populated while we were syncing, schedule a flush
+        if (_pendingSync && !_syncTimerId) {
+             _syncTimerId = setTimeout(_flushSync, DEBOUNCE_MS);
+        }
     }
 }
 
@@ -87,9 +92,18 @@ function ContinueReadingBox({ lastChapter, isLight, onContinue }) {
                     if (cancelled) return;  // component unmounted / strict-mode cleanup
 
                     if (remote && remote.chapterNumber && remote.verseNumber) {
+                        const localTime = localData?.timestamp || 0;
+                        const remoteTime = remote.updatedAt || 0;
+
+                        // Only overwrite if the remote data is strictly newer than the local data
+                        if (localTime >= remoteTime && localData) {
+                            return; // Keep local as main
+                        }
+
                         const remoteData = {
                             chapterId: remote.chapterNumber,
                             verseNumber: remote.verseNumber,
+                            timestamp: remoteTime, // Save the remote timestamp
                         };
 
                         // Resolve chapter name so we can show "Al-Baqarah 2"
