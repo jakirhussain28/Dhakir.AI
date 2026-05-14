@@ -538,32 +538,50 @@ function App() {
       return;
     }
 
+    const verseId = lastRead?.verseNumber || 1;
+    const requiredPage = Math.ceil(verseId / 10);
+    const targetVerseKey = lastRead ? `${lastRead.chapterId}:${verseId}` : null;
+
+    stopAudioTrigger.current(true);
+    setIsHomeView(false);
+
     let chapterToOpen = selectedChapter;
+    let isDifferentChapter = false;
+
     if (lastRead) {
       if (!chapterToOpen || chapterToOpen.id !== lastRead.chapterId) {
         const found = chapters.find(c => c.id === lastRead.chapterId);
         if (found) {
           chapterToOpen = found;
-          setSelectedChapter(found);
-          setUserData(USER_KEYS.LAST_CHAPTER, found, loggedIn);
+          isDifferentChapter = true;
         }
       }
     }
 
     if (!chapterToOpen) {
-      setIsHomeView(false);
       return;
     }
 
-    const verseNumber = lastRead?.verseNumber || 1;
-    const requiredPage = Math.ceil(verseNumber / 10);
-
-    setVerses([]);
-    setPage(requiredPage);
-    setStartPage(requiredPage);
-    setTargetVerse({ id: verseNumber });
-    setFetchKey(k => k + 1);
-    setIsHomeView(false);
+    if (!isDifferentChapter) {
+      // Already on the right chapter — just jump to the verse if loaded
+      const isLoaded = targetVerseKey && verses.some(v => v.verse_key === targetVerseKey);
+      if (isLoaded) {
+        setTargetVerse({ id: verseId });
+      } else {
+        setVerses([]);
+        setPage(requiredPage);
+        setStartPage(requiredPage);
+        setTargetVerse({ id: verseId });
+      }
+    } else {
+      // Different chapter — switch chapter and scroll to verse
+      setVerses([]);
+      setPage(requiredPage);
+      setStartPage(requiredPage);
+      setSelectedChapter(chapterToOpen);
+      setTargetVerse({ id: verseId });
+      setUserData(USER_KEYS.LAST_CHAPTER, chapterToOpen, loggedIn);
+    }
   };
 
   // "Go to AI Verse" — navigate to chapter + verse returned by AI guidance

@@ -96,6 +96,12 @@ function VerseList({
     };
   }, [scrollRef]);
 
+  // the 1-second local save and 3-second API sync can still finish in the background.
+  useEffect(() => {
+    return () => {
+    };
+  }, [selectedChapter]);
+
   // Re-observe all verse cards whenever the list changes
   useEffect(() => {
     const obs = readingObserver.current;

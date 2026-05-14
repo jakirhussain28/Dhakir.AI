@@ -1,21 +1,6 @@
-// src/utils/userDb.js
-//
-// Isolated IndexedDB storage for local vs. authenticated (QF) user data.
-//
-// Two completely separate IndexedDB databases:
-//   1. localUserDB  — used when the app runs locally (no login)
-//   2. qfUserDB     — used when the user is logged in via Quran Foundation OAuth
-//
-// Each database stores the same object stores:
-//   • userData  — key-value pairs for bookmarks, last read, streaks, history, etc.
-//
-// The active database is selected at runtime based on isAuthenticated().
-// Switching auth state automatically switches which DB is read/written,
-// so local data never leaks into the authenticated session and vice-versa.
-
-const LOCAL_DB_NAME = 'localUserDB';
-const QF_DB_NAME    = 'qfUserDB';
-const DB_VERSION    = 1;
+const LOCAL_DB_NAME = 'localUserDB';//used when the app runs locally (no login)
+const QF_DB_NAME = 'qfUserDB';//used when the user is logged in via Quran Foundation OAuth
+const DB_VERSION = 1;
 
 const STORE_NAME = 'userData';
 

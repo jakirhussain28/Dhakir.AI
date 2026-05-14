@@ -6,9 +6,13 @@ import { isAuthenticated } from '../../utils/auth';
 import { fetchReadingSessions, postReadingSession, fetchChapters } from '../../utils/api';
 
 // ── "Local-First, Sync-Second" debounce config ───────────────────────────────
-const DEBOUNCE_MS = 3000; // 3 seconds
+const LOCAL_DEBOUNCE_MS = 1000; // 1 second local save
+const DEBOUNCE_MS = 3000; // 3 seconds API sync
 
 // Module-level state shared across all component instances / calls:
+let _pendingLocal = null;
+let _localTimerId = null;
+
 let _pendingSync = null;   // { chapterId, verseNumber } queued for next POST
 let _syncTimerId = null;   // setTimeout id for the flush
 let _isSyncing = false;    // prevent concurrent API requests
@@ -17,28 +21,68 @@ export async function getLastReadVerse() {
     return getUserData(USER_KEYS.LAST_READ_VERSE, isAuthenticated());
 }
 
-
-export function saveLastReadVerse(chapterId, verseNumber, chapterName) {
-    // Always write to local IndexedDB first (never blocks, never throws)
-    const loggedIn = isAuthenticated();
-    const timestamp = Date.now();
-    setUserData(USER_KEYS.LAST_READ_VERSE, { chapterId, verseNumber, chapterName, timestamp }, loggedIn);
-
-    // If NOT authenticated, we're done — local storage is the source of truth
-    if (!loggedIn) return;
-
-    // Queue this position for the next API sync
-    _pendingSync = { chapterId, verseNumber };
-
-    // If a flush is already scheduled, clear it to reset the debounce timer
+export function cancelPendingSave() {
+    if (_localTimerId) {
+        clearTimeout(_localTimerId);
+        _localTimerId = null;
+    }
     if (_syncTimerId) {
         clearTimeout(_syncTimerId);
+        _syncTimerId = null;
+    }
+    _pendingLocal = null;
+    _pendingSync = null;
+}
+
+export function saveLastReadVerse(chapterId, verseNumber, chapterName) {
+    const loggedIn = isAuthenticated();
+    
+    _pendingLocal = { chapterId, verseNumber, chapterName };
+    if (loggedIn) {
+        _pendingSync = { chapterId, verseNumber };
     }
 
-    // Schedule a flush after the user stops updating the position for DEBOUNCE_MS
-    _syncTimerId = setTimeout(() => {
-        _flushSync();
-    }, DEBOUNCE_MS);
+    if (_localTimerId) clearTimeout(_localTimerId);
+    if (_syncTimerId) clearTimeout(_syncTimerId);
+
+    // 1. Debounce local IndexedDB save (1 second)
+    _localTimerId = setTimeout(async () => {
+        _localTimerId = null;
+        const data = _pendingLocal;
+        if (!data) return;
+
+        try {
+            const existing = await getLastReadVerse();
+            const timestamp = Date.now();
+
+            const isChanged = !existing || 
+                existing.chapterId !== data.chapterId || 
+                existing.verseNumber !== data.verseNumber;
+
+            // Always update IndexedDB (either new position or just refresh timestamp)
+            await setUserData(USER_KEYS.LAST_READ_VERSE, { ...data, timestamp }, loggedIn);
+
+            if (!loggedIn) return;
+
+            // If position hasn't changed, cancel the pending API sync
+            if (!isChanged) {
+                if (_syncTimerId) {
+                    clearTimeout(_syncTimerId);
+                    _syncTimerId = null;
+                    _pendingSync = null;
+                }
+            }
+        } catch (err) {
+            console.error('[ContinueReading] Failed to save local position:', err);
+        }
+    }, LOCAL_DEBOUNCE_MS);
+
+    // 2. Debounce API sync (3 seconds)
+    if (loggedIn) {
+        _syncTimerId = setTimeout(() => {
+            _flushSync();
+        }, DEBOUNCE_MS);
+    }
 }
 
 /** @private Sends the queued position to the API and resets state. */
