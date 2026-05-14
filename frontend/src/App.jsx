@@ -171,11 +171,16 @@ function App() {
   }, [localBookmarks, userDbReady]);
 
   // ── FETCH ONLINE BOOKMARKS when logged in ──────────────────────────────────
+  const hasFetchedOnlineBookmarks = useRef(false);
+
   useEffect(() => {
     if (!loggedIn) {
       setOnlineBookmarks([]);
+      hasFetchedOnlineBookmarks.current = false;
       return;
     }
+
+    if (hasFetchedOnlineBookmarks.current) return;
 
     let cancelled = false;
     const loadOnlineBookmarks = async () => {
@@ -192,6 +197,7 @@ function App() {
         }));
 
         setOnlineBookmarks(mapped);
+        hasFetchedOnlineBookmarks.current = true;
       } catch (err) {
         console.error('Failed to fetch online bookmarks:', err);
       }
