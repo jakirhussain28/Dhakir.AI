@@ -4,6 +4,7 @@ import { ActionCard } from '../InitialScreen';
 import { getUserData, setUserData, USER_KEYS } from '../../utils/userDb';
 import { isAuthenticated } from '../../utils/auth';
 import { fetchReadingSessions, postReadingSession, fetchChapters } from '../../utils/api';
+import { fetchWithCache, DB_STORES } from '../../utils/db';
 
 // ── "Local-First, Sync-Second" debounce config ───────────────────────────────
 const LOCAL_DEBOUNCE_MS = 1000; // 1 second local save
@@ -190,8 +191,9 @@ function ContinueReadingBox({ lastChapter, isLight, onContinue }) {
                         // Resolve chapter name so we can show "Al-Baqarah 2"
                         // instead of "Surah 2 2" when lastChapter prop is null.
                         try {
-                            const chaptersRes = await fetchChapters();
-                            const ch = chaptersRes?.chapters?.find(
+                            const data = await fetchWithCache(DB_STORES.CHAPTERS, 'all_chapters', fetchChapters);
+                            const chaptersList = data?.chapters || data;
+                            const ch = chaptersList?.find(
                                 c => c.id === remote.chapterNumber
                             );
                             if (ch) remoteData.chapterName = ch.name_simple;
