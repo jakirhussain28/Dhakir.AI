@@ -2,13 +2,17 @@ import React, { useState, useEffect } from 'react';
 import { FaRegCircle, FaCircle } from "react-icons/fa";
 import { isAuthenticated } from '../../utils/auth';
 import { useStreakDays } from '../../hooks/useStreakDays';
+import { useLocalActivities, formatReadingTime } from '../../hooks/useLocalActivities';
 
 function StreakBox({ isLight, onClick }) {
     const [isLoggedIn, setIsLoggedIn] = useState(isAuthenticated());
     const { streakDays } = useStreakDays();
-    const dailyGoal = 15; // 15minutes daily reading
-    const progressPercent = 0; // it becomes 100% when user completes 15 minutes daily reading
+    const { todaySeconds } = useLocalActivities();
+    const dailyGoal = 15; // 15 minutes daily reading goal
+    const dailyGoalSeconds = dailyGoal * 60; // 900 seconds
 
+    // Compute progress percent (capped at 100%)
+    const progressPercent = Math.min(100, Math.round((todaySeconds / dailyGoalSeconds) * 100));
 
     useEffect(() => {
         // Simple check for login status change
@@ -57,24 +61,19 @@ function StreakBox({ isLight, onClick }) {
             {/* Right side: Goal Progress */}
             <div className="flex flex-col items-end gap-1.5 w-[130px] sm:w-[150px] shrink-0">
                 <span className={`text-[12px] font-medium whitespace-nowrap ${isLight ? 'text-stone-600' : 'text-gray-400'}`}>
-                    Daily Reading: &nbsp;{dailyGoal} minutes
+                    {/* {todaySeconds > 0 ? formatReadingTime(todaySeconds) : '0 min'} / {dailyGoal} min */}
+                    Daily Reading: {dailyGoal} minutes
                 </span>
                 <div className={`w-full h-3.5 rounded-full overflow-hidden border flex items-center relative
                     ${isLight ? 'border-stone-500 bg-white' : 'border-gray-500 bg-[#1a1b1d]'}`}
                 >
                     <div
-                        className={`h-full ${isLight ? 'bg-stone-500' : 'bg-gray-500'}`}
+                        className={`h-full rounded-full transition-all duration-500 ease-out ${progressPercent >= 100
+                            ? (isLight ? 'bg-emerald-500' : 'bg-emerald-400')
+                            : (isLight ? 'bg-stone-500' : 'bg-gray-500')
+                            }`}
                         style={{ width: `${progressPercent}%` }}
                     />
-                    {/* <span className={`absolute inset-0 flex items-center text-[10px] font-bold z-10
-                        ${isLight ? 'text-stone-600' : 'text-gray-300'}`}
-                        style={{
-                            left: `${progressPercent}%`,
-                            paddingLeft: '6px'
-                        }}
-                    >
-                        {progressPercent}%
-                    </span> */}
                 </div>
             </div>
         </div>

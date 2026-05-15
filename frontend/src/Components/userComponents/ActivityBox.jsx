@@ -1,25 +1,31 @@
 import { useState, useEffect, useRef } from 'react';
 import { FaRegCircle, FaCircle } from "react-icons/fa";
 import { isAuthenticated } from '../../utils/auth';
-import { useStreakDays } from '../../hooks/useStreakDays';
+import { useLocalActivities, formatReadingTime } from '../../hooks/useLocalActivities';
 
 function ActivityBox({ isLight }) {
     const [isLoggedIn, setIsLoggedIn] = useState(isAuthenticated());
     const scrollRef = useRef(null);
-    const { streakDays } = useStreakDays();
-    const todaysReading = 230; // this shows total reading time for today in seconds which can be shown in hours and mins
+    const { months, todaySeconds, streakDays, loading } = useLocalActivities();
 
     useEffect(() => {
         const checkAuth = () => setIsLoggedIn(isAuthenticated());
         window.addEventListener('storage', checkAuth);
 
-        // Auto-scroll to the right calendar
+        // Auto-scroll to the right (current month)
         if (scrollRef.current) {
             scrollRef.current.scrollLeft = scrollRef.current.scrollWidth;
         }
 
         return () => window.removeEventListener('storage', checkAuth);
     }, []);
+
+    // Re-scroll when months data loads
+    useEffect(() => {
+        if (!loading && scrollRef.current) {
+            scrollRef.current.scrollLeft = scrollRef.current.scrollWidth;
+        }
+    }, [loading, months]);
 
     // Helper to get exact colors based on the time (in seconds) tier and theme
     const getColorClass = (level) => {
@@ -42,31 +48,6 @@ function ActivityBox({ isLight }) {
             }
         }
     };
-
-    // MOCK DATA
-    const month1 = [        //previous to previous month
-        null, null, null, 0, 0, 0, 0,
-        0, 0, 0, 0, 0, 0, 0,
-        0, 0, 0, 0, 0, 0, 0,
-        0, 0, 0, 0, 0, 0, 0,
-        0, 0, 0, null, null, null, null
-    ];
-
-    const month2 = [        //previous month
-        null, null, null, null, null, null, 0,
-        0, 3, 0, 0, 0, 0, 0,
-        0, 0, 0, 1, 0, 0, 0,
-        0, 0, 0, 0, 0, 0, 0,
-        0, 0, 0, 0, null, null, null
-    ];
-
-    const month3 = [        //current month
-        null, null, null, null, 0, 0, 0,
-        0, 3, 3, 0, 0, 0, 0,
-        0, 1, 2, 2, 0, 0, 0,
-        0, 0, 0, 0, 0, 1, 0,
-        0, 0, 0, null, null, null, null
-    ];
 
     const renderGrid = (data) => (
         <div className="grid grid-rows-7 grid-flow-col gap-1 sm:gap-1.5 md:gap-[9px]">
@@ -119,8 +100,8 @@ function ActivityBox({ isLight }) {
 
                 <div className="flex items-center flex-1 justify-end ml-2 md:ml-3">
                     <span className={`text-[12px] sm:text-sm md:text-[21px] font-medium text-right ${isLight ? 'text-stone-500' : 'text-gray-400'}`}>
-                        Today's Reading: {todaysReading} seconds
-                    </span>  {/*TODO: convert seconds to hours and minutes if less than 60 minutes then show only minutes */}
+                        Today's Reading: {formatReadingTime(todaySeconds)}
+                    </span>
                 </div>
             </div>
 
@@ -134,32 +115,15 @@ function ActivityBox({ isLight }) {
                         <DayLabels align="left" />
 
                         <div className="flex gap-3 sm:gap-4 md:gap-6 px-1 sm:px-2 md:px-3">
-                            {/* Month 1 previous to previous month*/}
-                            <div className="flex flex-col items-center">
-                                <div className={`text-[9px] sm:text-[10px] md:text-[15px] font-medium px-2.5 py-0.5 md:px-[15px] md:py-[3px] rounded-md md:rounded-lg mb-2 sm:mb-2.5 md:mb-[15px]
-                                    ${isLight ? 'bg-stone-200 text-stone-500' : 'bg-white/10 text-gray-400'}`}>
-                                    March
+                            {months.map((month, idx) => (
+                                <div key={idx} className="flex flex-col items-center">
+                                    <div className={`text-[9px] sm:text-[10px] md:text-[15px] font-medium px-2.5 py-0.5 md:px-[15px] md:py-[3px] rounded-md md:rounded-lg mb-2 sm:mb-2.5 md:mb-[15px]
+                                        ${isLight ? 'bg-stone-200 text-stone-500' : 'bg-white/10 text-gray-400'}`}>
+                                        {month.name}
+                                    </div>
+                                    {renderGrid(month.grid)}
                                 </div>
-                                {renderGrid(month1)}
-                            </div>
-
-                            {/* Month 2 previous month */}
-                            <div className="flex flex-col items-center">
-                                <div className={`text-[9px] sm:text-[10px] md:text-[15px] font-medium px-2.5 py-0.5 md:px-[15px] md:py-[3px] rounded-md md:rounded-lg mb-2 sm:mb-2.5 md:mb-[15px]
-                                    ${isLight ? 'bg-stone-200 text-stone-500' : 'bg-white/10 text-gray-400'}`}>
-                                    April
-                                </div>
-                                {renderGrid(month2)}
-                            </div>
-
-                            {/* Month 3 current month*/}
-                            <div className="flex flex-col items-center">
-                                <div className={`text-[9px] sm:text-[10px] md:text-[15px] font-medium px-2.5 py-0.5 md:px-[15px] md:py-[3px] rounded-md md:rounded-lg mb-2 sm:mb-2.5 md:mb-[15px]
-                                    ${isLight ? 'bg-stone-200 text-stone-500' : 'bg-white/10 text-gray-400'}`}>
-                                    May
-                                </div>
-                                {renderGrid(month3)}
-                            </div>
+                            ))}
                         </div>
 
                         <DayLabels align="right" />

@@ -13,6 +13,7 @@ export const USER_KEYS = {
   STREAK_DAYS:     'streakDays',        // number
   AI_HISTORY:      'aiGuidanceHistory', // Array of guidance history entries
   PROFILE:         'profile',           // User profile data
+  ACTIVITIES:      'activities',        // Array of { date, seconds, ranges } daily activity logs
 };
 
 // ── Internal: open a named IndexedDB ──────────────────────────────────────

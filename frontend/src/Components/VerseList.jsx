@@ -7,6 +7,7 @@ import ChapterNavigation from './ChapterNavigation';
 import VerseCard from './VerseCard';
 import SkeletonLoader from './SkeletonLoader';
 import { saveLastReadVerse, flushPendingSave } from './userComponents/ContinueReadingBox';
+import { useActivityTracker } from '../hooks/useActivityTracker';
 
 // NEW: Import Analytics
 import { logAnalyticsEvent } from '../firebase';
@@ -56,6 +57,9 @@ function VerseList({
   // observer
   const observer = useRef();
 
+  // ── ACTIVITY TRACKER (local-first) ────────────────────────────────────────
+  const { reportVerseKey, flushActivity } = useActivityTracker();
+
   // ── READING POSITION TRACKER ──────────────────────────────────────────────
   // Fires whenever a verse card crosses the header zone (~80px from top).
   const readingObserver = useRef(null);
@@ -79,6 +83,8 @@ function VerseList({
               lastSavedVerseKey.current = vk;
               const [chStr, vStr] = vk.split(':');
               saveLastReadVerse(Number(chStr), Number(vStr), selectedChapter?.name_simple);
+              // Report to local activity tracker
+              reportVerseKey(vk);
             }
           }
         }
@@ -101,8 +107,9 @@ function VerseList({
   useEffect(() => {
     return () => {
       flushPendingSave();
+      flushActivity(); // also flush reading activity to IndexedDB
     };
-  }, [selectedChapter]);
+  }, [selectedChapter, flushActivity]);
 
   // Re-observe all verse cards whenever the list changes
   useEffect(() => {
