@@ -404,54 +404,89 @@ function GuidanceBox({ isLight, onGoToVerse }) {
 function InitialScreen({ theme, lastChapter, onContinue, loadingChapters, isLoggedIn, bookmarks, onGoToBookmark, onRemoveBookmark, onGoToVerse, onOpenActivity }) {
     const isLight = theme === 'light';
     const [isFooterVisible, setIsFooterVisible] = useState(false);
+    const isFooterVisibleRef = useRef(false);
+    const isScrollingRef = useRef(false);
+    const scrollEndTimeoutRef = useRef(null);
     const lastScrollY = useRef(0);
     const containerRef = useRef(null);
     const footerTimeoutRef = useRef(null);
 
     const showFooterTemporarily = () => {
         setIsFooterVisible(true);
+        isFooterVisibleRef.current = true;
         if (footerTimeoutRef.current) clearTimeout(footerTimeoutRef.current);
         footerTimeoutRef.current = setTimeout(() => {
             setIsFooterVisible(false);
+            isFooterVisibleRef.current = false;
         }, 5000);
+    };
+
+    const hideFooter = () => {
+        setIsFooterVisible(false);
+        isFooterVisibleRef.current = false;
+        if (footerTimeoutRef.current) clearTimeout(footerTimeoutRef.current);
     };
 
     useEffect(() => {
         return () => {
             if (footerTimeoutRef.current) clearTimeout(footerTimeoutRef.current);
+            if (scrollEndTimeoutRef.current) clearTimeout(scrollEndTimeoutRef.current);
         };
     }, []);
+
+    const handleScrollEvent = (diff) => {
+        if (Math.abs(diff) > 5) {
+            if (!isScrollingRef.current) {
+                // New scroll action started
+                isScrollingRef.current = true;
+                
+                if (diff > 0) { 
+                    // Scrolling down
+                    if (isFooterVisibleRef.current) {
+                        hideFooter();
+                    } else {
+                        showFooterTemporarily();
+                    }
+                } else { 
+                    // Scrolling up
+                    showFooterTemporarily();
+                }
+            }
+
+            // Detect when scrolling stops
+            if (scrollEndTimeoutRef.current) clearTimeout(scrollEndTimeoutRef.current);
+            scrollEndTimeoutRef.current = setTimeout(() => {
+                isScrollingRef.current = false;
+            }, 150);
+        }
+    };
 
     const handleScroll = () => {
         if (!containerRef.current) return;
         const currentScrollY = containerRef.current.scrollTop;
-        
-        // Trigger for any significant scroll movement
-        if (Math.abs(currentScrollY - lastScrollY.current) > 5) {
-            showFooterTemporarily();
-        }
+        const diff = currentScrollY - lastScrollY.current;
+        handleScrollEvent(diff);
         lastScrollY.current = currentScrollY;
     };
 
     // Trackpad / Mouse Wheel Support
     const handleWheel = (e) => {
-        if (Math.abs(e.deltaY) > 2) {
-            showFooterTemporarily();
-        }
+        handleScrollEvent(e.deltaY);
     };
 
     // Touch Support
     const touchStartY = useRef(0);
+    const lastTouchY = useRef(0);
+
     const handleTouchStart = (e) => {
         touchStartY.current = e.touches[0].clientY;
+        lastTouchY.current = e.touches[0].clientY;
     };
     const handleTouchMove = (e) => {
-        const touchY = e.touches[0].clientY;
-        const deltaY = Math.abs(touchStartY.current - touchY);
-        
-        if (deltaY > 5) {
-            showFooterTemporarily();
-        }
+        const currentTouchY = e.touches[0].clientY;
+        const diff = lastTouchY.current - currentTouchY; // Positive = scrolling down
+        handleScrollEvent(diff);
+        lastTouchY.current = currentTouchY;
     };
 
     return (
