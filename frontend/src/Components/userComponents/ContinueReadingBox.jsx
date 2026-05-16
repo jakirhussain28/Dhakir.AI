@@ -58,11 +58,8 @@ export async function flushPendingSave() {
 
 export function saveLastReadVerse(chapterId, verseNumber, chapterName) {
     const loggedIn = isAuthenticated();
-    
-    _pendingLocal = { chapterId, verseNumber, chapterName };
-    if (loggedIn) {
-        _pendingSync = { chapterId, verseNumber };
-    }
+
+    const stagedData = { chapterId, verseNumber, chapterName };
 
     if (_localTimerId) clearTimeout(_localTimerId);
     if (_syncTimerId) clearTimeout(_syncTimerId);
@@ -70,6 +67,12 @@ export function saveLastReadVerse(chapterId, verseNumber, chapterName) {
     // 1. Debounce local IndexedDB save (1 second)
     _localTimerId = setTimeout(async () => {
         _localTimerId = null;
+
+        _pendingLocal = stagedData;
+        if (loggedIn) {
+            _pendingSync = { chapterId: stagedData.chapterId, verseNumber: stagedData.verseNumber };
+        }
+
         const data = _pendingLocal;
         if (!data) return;
 
@@ -77,8 +80,8 @@ export function saveLastReadVerse(chapterId, verseNumber, chapterName) {
             const existing = await getLastReadVerse();
             const timestamp = Date.now();
 
-            const isChanged = !existing || 
-                existing.chapterId !== data.chapterId || 
+            const isChanged = !existing ||
+                existing.chapterId !== data.chapterId ||
                 existing.verseNumber !== data.verseNumber;
 
             // Always update IndexedDB (either new position or just refresh timestamp)
