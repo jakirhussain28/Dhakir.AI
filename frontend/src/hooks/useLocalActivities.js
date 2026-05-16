@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { getUserData, setUserData, USER_KEYS } from '../utils/userDb';
+import { ActivityCalculator } from '../utils/Activity_Streak_Calculator';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -43,7 +44,8 @@ const secondsToLevel = (seconds) => {
  * Each month grid has 35 slots (7 rows × 5 cols), padded with `null`
  * so the first actual day aligns with the correct weekday row.
  *
- * Returns { months: [{ name, grid }], todaySeconds, streakDays }
+ * Returns { months: [{ name, grid }], todaySeconds, streakDays, activities }
+ * Each grid cell is either `null` (padding / future) or `{ level, dateKey }`.
  */
 export const buildCalendarData = (activities = []) => {
   const now = new Date();
@@ -76,7 +78,7 @@ export const buildCalendarData = (activities = []) => {
         grid.push(null);
       } else {
         const secs = activityMap.get(dateKey) || 0;
-        grid.push(secondsToLevel(secs));
+        grid.push({ level: secondsToLevel(secs), dateKey });
       }
     }
 
@@ -107,7 +109,7 @@ export const buildCalendarData = (activities = []) => {
     }
   }
 
-  return { months, todaySeconds, streakDays };
+  return { months, todaySeconds, streakDays, activities };
 };
 
 // ── Hook ─────────────────────────────────────────────────────────────────────
@@ -130,11 +132,13 @@ export function useLocalActivities() {
     months: [],
     todaySeconds: 0,
     streakDays: 0,
+    activities: [],
   });
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
     try {
+      await ActivityCalculator.loadChapterNames();
       const activities = (await getUserData(USER_KEYS.ACTIVITIES, false)) || [];
       const result = buildCalendarData(activities);
       setData(result);

@@ -1,12 +1,26 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { FaRegCircle, FaCircle } from "react-icons/fa";
 import { isAuthenticated } from '../../utils/auth';
 import { useLocalActivities, formatReadingTime } from '../../hooks/useLocalActivities';
+import { ActivityCalculator, formatDetailedTime } from '../../utils/Activity_Streak_Calculator';
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
+
+/** Format a YYYY-MM-DD string as "Sat  May 16, 2026". */
+const formatSelectedDate = (dateStr) => {
+    const d = new Date(dateStr + 'T00:00:00');
+    const dayName = d.toLocaleDateString('en-US', { weekday: 'short' });
+    const rest = d.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+    return `${dayName}  ${rest}`;
+};
+
+// ── Component ────────────────────────────────────────────────────────────────
 
 function ActivityBox({ isLight }) {
     const [isLoggedIn, setIsLoggedIn] = useState(isAuthenticated());
+    const [selectedDate, setSelectedDate] = useState(null);
     const scrollRef = useRef(null);
-    const { months, todaySeconds, streakDays, loading } = useLocalActivities();
+    const { months, todaySeconds, streakDays, activities, loading } = useLocalActivities();
 
     useEffect(() => {
         const checkAuth = () => setIsLoggedIn(isAuthenticated());
@@ -26,6 +40,29 @@ function ActivityBox({ isLight }) {
             scrollRef.current.scrollLeft = scrollRef.current.scrollWidth;
         }
     }, [loading, months]);
+
+    // ── Selected day details (computed from activities) ──────────────────────
+    const selectedDayDetails = useMemo(() => {
+        if (!selectedDate || !activities || activities.length === 0) return null;
+        const entry = activities.find(a => a.date === selectedDate);
+        const seconds = entry?.seconds || 0;
+        const ranges = ActivityCalculator.compactRanges(entry?.ranges || []);
+        const uniqueVerses = new Set();
+        for (const r of ranges) {
+            ActivityCalculator.expandRange(r).forEach(k => uniqueVerses.add(k));
+        }
+        return {
+            date: selectedDate,
+            seconds,
+            verseCount: uniqueVerses.size,
+            ranges,
+            formattedRanges: ranges.map(r => ActivityCalculator.formatRangeHuman(r)),
+        };
+    }, [selectedDate, activities]);
+
+    const handleDayClick = (dateKey) => {
+        setSelectedDate(prev => prev === dateKey ? null : dateKey);
+    };
 
     // Helper to get exact colors based on the time (in seconds) tier and theme
     const getColorClass = (level) => {
@@ -51,12 +88,30 @@ function ActivityBox({ isLight }) {
 
     const renderGrid = (data) => (
         <div className="grid grid-rows-7 grid-flow-col gap-1 sm:gap-1.5 md:gap-[9px]">
-            {data.map((level, i) => (
-                <div
-                    key={i}
-                    className={`w-3 h-3 sm:w-3.5 sm:h-3.5 md:w-[21px] md:h-[21px] rounded-[2px] sm:rounded-[3px] md:rounded-[4.5px] ${getColorClass(level)}`}
-                />
-            ))}
+            {data.map((cell, i) => {
+                const level = cell ? cell.level : null;
+                const dateKey = cell ? cell.dateKey : null;
+                const isClickable = dateKey !== null && level !== null;
+                const isSelected = dateKey && dateKey === selectedDate;
+
+                return (
+                    <div
+                        key={i}
+                        onClick={isClickable ? () => handleDayClick(dateKey) : undefined}
+                        className={`
+                            w-3 h-3 sm:w-3.5 sm:h-3.5 md:w-[21px] md:h-[21px]
+                            rounded-[2px] sm:rounded-[3px] md:rounded-[4.5px]
+                            ${getColorClass(level)}
+                            ${isClickable ? 'cursor-pointer hover:brightness-125 transition-all duration-150' : ''}
+                            ${isSelected
+                                ? (isLight
+                                    ? 'ring-[2px] ring-stone-500 ring-offset-1 ring-offset-[#f8f9fa]'
+                                    : 'ring-[2px] ring-emerald-400 ring-offset-1 ring-offset-[#1c211c]')
+                                : ''}
+                        `}
+                    />
+                );
+            })}
         </div>
     );
 
@@ -71,41 +126,98 @@ function ActivityBox({ isLight }) {
 
     return (
         <div className="flex flex-col gap-4 md:gap-6 w-full">
-            {/* Upper Section: Streak & Today's Reading */}
-            <div className={`
-                flex items-center justify-between px-4 py-3.5 md:px-6 md:py-[21px] rounded-2xl md:rounded-[24px] border w-full
-                ${isLight ? 'bg-white border-stone-200 shadow-sm' : 'bg-[#1a1b1d] border-white/5 shadow-md'}
-            `}>
-                <div className="flex items-center gap-3 md:gap-[18px]">
-                    <div className={`w-[3.25rem] h-10 md:w-[78px] md:h-[60px] rounded-xl md:rounded-[18px] flex items-center justify-center shrink-0
-                        ${isLight ? 'bg-emerald-50' : 'bg-emerald-900/20'}`}
-                    >
-                        <span className={`text-3xl md:text-[45px] font-semibold ${isLight ? 'text-stone-500' : 'text-gray-300'}`}>
-                            {streakDays}
+
+            {/* ── Upper Section ─────────────────────────────────────────── */}
+            {selectedDayDetails ? (
+                /* ── Selected Day Detail Card ── */
+                <div
+                    onClick={() => setSelectedDate(null)}
+                    className={`
+                        px-4 py-3.5 md:px-6 md:py-[21px] rounded-2xl md:rounded-[24px] border w-full cursor-pointer
+                        transition-all duration-300 ease-out
+                        ${isLight ? 'bg-white border-stone-200 shadow-sm' : 'bg-[#1a1b1d] border-white/5 shadow-md'}
+                    `}
+                >
+                    {/* Row 1: Date · Verse Count · Reading Time */}
+                    <div className="flex items-center justify-between flex-wrap gap-y-1">
+                        <span className={`text-[13px] sm:text-sm md:text-[19px] font-semibold ${isLight ? 'text-stone-600' : 'text-gray-300'}`}>
+                            {formatSelectedDate(selectedDayDetails.date)}
+                        </span>
+                        <span className={`text-[12px] sm:text-sm md:text-[17px] font-medium ${isLight ? 'text-stone-500' : 'text-gray-400'}`}>
+                            Verses Read: &nbsp;
+                            <span className={`font-bold ${isLight ? 'text-stone-700' : 'text-gray-200'}`}>
+                                {selectedDayDetails.verseCount}
+                            </span>
+                        </span>
+                        <span className={`text-[12px] sm:text-sm md:text-[17px] font-medium ${isLight ? 'text-stone-500' : 'text-gray-400'}`}>
+                            {formatDetailedTime(selectedDayDetails.seconds)}
                         </span>
                     </div>
-                    <div className="flex flex-col shrink-0">
-                        <span className={`text-[12px] md:text-[18px] font-bold uppercase tracking-wider ${isLight ? 'text-stone-500' : 'text-gray-400'}`}>
-                            Day Streak
-                        </span>
-                        <div className={`flex items-center gap-1 md:gap-[6px] text-[11px] md:text-[16px] font-medium leading-none mt-0.5 md:mt-[3px] ${isLight ? 'text-stone-400' : 'text-gray-500'}`}>
-                            {isLoggedIn ? (
-                                <> <FaCircle className="w-2.5 h-2.5 md:w-[15px] md:h-[15px]" /> <span>logged in</span> </>
-                            ) : (
-                                <> <FaRegCircle className="w-2.5 h-2.5 md:w-[15px] md:h-[15px]" /> <span>local</span> </>
-                            )}
+
+                    {/* Row 2: Verse Ranges */}
+                    {selectedDayDetails.formattedRanges.length > 0 && (
+                        <div className="flex flex-wrap gap-2 md:gap-3 mt-3 md:mt-4 max-h-[75px] md:max-h-[110px] overflow-y-auto scrollbar-hide">
+                            {selectedDayDetails.formattedRanges.map((label, idx) => (
+                                <span
+                                    key={idx}
+                                    className={`
+                                        text-[11px] sm:text-xs md:text-[15px] font-medium
+                                        px-2.5 py-1 md:px-3.5 md:py-1.5
+                                        rounded-lg md:rounded-xl
+                                        ${isLight
+                                            ? 'bg-stone-100 text-stone-600'
+                                            : 'bg-white/5 text-gray-400'}
+                                    `}
+                                >
+                                    {label}
+                                </span>
+                            ))}
+                        </div>
+                    )}
+
+                    {selectedDayDetails.verseCount === 0 && selectedDayDetails.seconds === 0 && (
+                        <p className={`text-[11px] sm:text-xs md:text-[15px] mt-2 ${isLight ? 'text-stone-400' : 'text-gray-500'}`}>
+                            No reading activity on this day.
+                        </p>
+                    )}
+                </div>
+            ) : (
+                /* ── Default: Streak & Today's Reading ── */
+                <div className={`
+                    flex items-center justify-between px-4 py-3.5 md:px-6 md:py-[21px] rounded-2xl md:rounded-[24px] border w-full
+                    ${isLight ? 'bg-white border-stone-200 shadow-sm' : 'bg-[#1a1b1d] border-white/5 shadow-md'}
+                `}>
+                    <div className="flex items-center gap-3 md:gap-[18px]">
+                        <div className={`w-[3.25rem] h-10 md:w-[78px] md:h-[60px] rounded-xl md:rounded-[18px] flex items-center justify-center shrink-0
+                            ${isLight ? 'bg-emerald-50' : 'bg-emerald-900/20'}`}
+                        >
+                            <span className={`text-3xl md:text-[45px] font-semibold ${isLight ? 'text-stone-500' : 'text-gray-300'}`}>
+                                {streakDays}
+                            </span>
+                        </div>
+                        <div className="flex flex-col shrink-0">
+                            <span className={`text-[12px] md:text-[18px] font-bold uppercase tracking-wider ${isLight ? 'text-stone-500' : 'text-gray-400'}`}>
+                                Day Streak
+                            </span>
+                            <div className={`flex items-center gap-1 md:gap-[6px] text-[11px] md:text-[16px] font-medium leading-none mt-0.5 md:mt-[3px] ${isLight ? 'text-stone-400' : 'text-gray-500'}`}>
+                                {isLoggedIn ? (
+                                    <> <FaCircle className="w-2.5 h-2.5 md:w-[15px] md:h-[15px]" /> <span>logged in</span> </>
+                                ) : (
+                                    <> <FaRegCircle className="w-2.5 h-2.5 md:w-[15px] md:h-[15px]" /> <span>local</span> </>
+                                )}
+                            </div>
                         </div>
                     </div>
-                </div>
 
-                <div className="flex items-center flex-1 justify-end ml-2 md:ml-3">
-                    <span className={`text-[12px] sm:text-sm md:text-[21px] font-medium text-right ${isLight ? 'text-stone-500' : 'text-gray-400'}`}>
-                        Today's Reading: {formatReadingTime(todaySeconds)}
-                    </span>
+                    <div className="flex items-center flex-1 justify-end ml-2 md:ml-3">
+                        <span className={`text-[12px] sm:text-sm md:text-[21px] font-medium text-right ${isLight ? 'text-stone-500' : 'text-gray-400'}`}>
+                            Today's Reading: {formatReadingTime(todaySeconds)}
+                        </span>
+                    </div>
                 </div>
-            </div>
+            )}
 
-            {/* Lower Section: Calendar Heatmap */}
+            {/* ── Lower Section: Calendar Heatmap ──────────────────────── */}
             <div className={`
                 p-3 sm:p-4 md:p-6 rounded-2xl md:rounded-[24px] border w-full
                 ${isLight ? 'bg-[#f8f9fa] border-stone-200/50 shadow-inner' : 'bg-[#1c211c] border-white/5 shadow-inner'}

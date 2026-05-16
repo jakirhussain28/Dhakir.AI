@@ -58,7 +58,7 @@ function VerseList({
   const observer = useRef();
 
   // ── ACTIVITY TRACKER (local-first) ────────────────────────────────────────
-  const { reportVerseKey, flushActivity } = useActivityTracker();
+  const { reportVerseVisible, reportVerseHidden, flushActivity } = useActivityTracker();
 
   // ── READING POSITION TRACKER ──────────────────────────────────────────────
   // Fires whenever a verse card crosses the header zone (~80px from top).
@@ -77,15 +77,21 @@ function VerseList({
     readingObserver.current = new IntersectionObserver(
       (entries) => {
         for (const entry of entries) {
+          const vk = entry.target.dataset.verseKey;
+          if (!vk) continue;
+
           if (entry.isIntersecting) {
-            const vk = entry.target.dataset.verseKey;
-            if (vk && vk !== lastSavedVerseKey.current) {
+            // Verse entered the viewport zone
+            if (vk !== lastSavedVerseKey.current) {
               lastSavedVerseKey.current = vk;
               const [chStr, vStr] = vk.split(':');
               saveLastReadVerse(Number(chStr), Number(vStr), selectedChapter?.name_simple);
-              // Report to local activity tracker
-              reportVerseKey(vk);
             }
+            // Start dwell timer — verse will be counted only after 1s
+            reportVerseVisible(vk);
+          } else {
+            // Verse left the viewport zone — cancel dwell timer if < 1s
+            reportVerseHidden(vk);
           }
         }
       },

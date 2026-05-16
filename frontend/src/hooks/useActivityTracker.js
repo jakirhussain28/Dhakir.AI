@@ -69,6 +69,10 @@ const mergeRangeArrays = (existingRanges, newRanges) => {
   return mergeKeysToRanges(allKeys);
 };
 
+// ── Dwell-time threshold (ms) ────────────────────────────────────────────────
+// A verse is only counted as "read" if it stays visible for at least this long.
+const DWELL_THRESHOLD_MS = 1_000; // 1 second
+
 // ── Flush interval (seconds) ─────────────────────────────────────────────────
 const FLUSH_INTERVAL_MS = 5_000; // flush every 5 seconds
 
@@ -80,12 +84,15 @@ const FLUSH_INTERVAL_MS = 5_000; // flush every 5 seconds
  * Call this from the reading view (e.g. VerseList).
  * It automatically:
  *   1. Counts active seconds while document is focused.
- *   2. Collects verse keys reported via `reportVerseKey(key)`.
+ *   2. Collects verse keys reported via `reportVerseVisible` / `reportVerseHidden`
+ *      — a verse is only added to the pending set after it has been continuously
+ *      visible for ≥ DWELL_THRESHOLD_MS (1 second).
  *   3. Every FLUSH_INTERVAL_MS merges + persists to localUserDB → USER_KEYS.ACTIVITIES.
  *
  * Returns:
- *   - reportVerseKey(key: string)  — call when a verse becomes visible
- *   - flushActivity()              — force-flush immediately (call on unmount / nav)
+ *   - reportVerseVisible(key: string) — call when a verse enters the viewport
+ *   - reportVerseHidden(key: string)  — call when a verse leaves the viewport
+ *   - flushActivity()                 — force-flush immediately (call on unmount / nav)
  */
 export function useActivityTracker() {
   // Mutable refs to survive across renders without causing re-renders
@@ -94,6 +101,12 @@ export function useActivityTracker() {
   const isFocused = useRef(document.hasFocus());
   const tickInterval = useRef(null);
   const flushTimer = useRef(null);
+
+  // Dwell-time tracking: Map<verseKey, timeoutId>
+  // When a verse becomes visible, we start a timer. If it's still visible
+  // after DWELL_THRESHOLD_MS, we add it to pendingKeys. If it leaves before
+  // the timer fires, we cancel the timer and don't count it.
+  const dwellTimers = useRef(new Map());
 
   // ── Second counter ─────────────────────────────────────────────────────────
   useEffect(() => {
@@ -161,13 +174,41 @@ export function useActivityTracker() {
       clearInterval(flushTimer.current);
       // Final flush on unmount
       flushActivity();
+      // Clear any pending dwell timers
+      for (const timerId of dwellTimers.current.values()) {
+        clearTimeout(timerId);
+      }
+      dwellTimers.current.clear();
     };
   }, [flushActivity]);
 
-  // ── Public: report a visible verse key ─────────────────────────────────────
-  const reportVerseKey = useCallback((key) => {
-    if (key) pendingKeys.current.add(key);
+  // ── Public: report a verse becoming visible ────────────────────────────────
+  // Starts a dwell timer; the verse is only counted after DWELL_THRESHOLD_MS.
+  const reportVerseVisible = useCallback((key) => {
+    if (!key) return;
+    // If there's already a pending timer for this key, don't start another
+    if (dwellTimers.current.has(key)) return;
+
+    const timerId = setTimeout(() => {
+      pendingKeys.current.add(key);
+      dwellTimers.current.delete(key);
+    }, DWELL_THRESHOLD_MS);
+
+    dwellTimers.current.set(key, timerId);
   }, []);
 
-  return { reportVerseKey, flushActivity };
+  // ── Public: report a verse leaving the viewport ────────────────────────────
+  // Cancels the dwell timer if the verse hasn't crossed the threshold yet.
+  const reportVerseHidden = useCallback((key) => {
+    if (!key) return;
+    const timerId = dwellTimers.current.get(key);
+    if (timerId !== undefined) {
+      clearTimeout(timerId);
+      dwellTimers.current.delete(key);
+    }
+    // If the key was already added to pendingKeys (timer already fired),
+    // we keep it — the verse was genuinely read.
+  }, []);
+
+  return { reportVerseVisible, reportVerseHidden, flushActivity };
 }
