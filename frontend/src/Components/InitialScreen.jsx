@@ -418,7 +418,7 @@ function InitialScreen({ theme, lastChapter, onContinue, loadingChapters, isLogg
         footerTimeoutRef.current = setTimeout(() => {
             setIsFooterVisible(false);
             isFooterVisibleRef.current = false;
-        }, 5000);
+        }, 3000);
     };
 
     const hideFooter = () => {
@@ -439,16 +439,11 @@ function InitialScreen({ theme, lastChapter, onContinue, loadingChapters, isLogg
             if (!isScrollingRef.current) {
                 // New scroll action started
                 isScrollingRef.current = true;
-                
-                if (diff > 0) { 
-                    // Scrolling down
-                    if (isFooterVisibleRef.current) {
-                        hideFooter();
-                    } else {
-                        showFooterTemporarily();
-                    }
-                } else { 
-                    // Scrolling up
+                // Scrolling in either direction (up or down) hides the footer if it's already visible,
+                // or shows it temporarily if it's currently hidden.
+                if (isFooterVisibleRef.current) {
+                    hideFooter();
+                } else {
                     showFooterTemporarily();
                 }
             }
