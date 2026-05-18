@@ -222,6 +222,7 @@ export const fetchActivityDays = async (from, to) => {
   let allActivities = [];
   let cursor = null;
   let hasNext = true;
+  const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
   while (hasNext) {
     const params = new URLSearchParams({ type: 'QURAN', first: '20' });
@@ -229,7 +230,9 @@ export const fetchActivityDays = async (from, to) => {
     if (to) params.set('to', to);
     if (cursor) params.set('after', cursor);
 
-    const res = await fetchUserApi(`activity-days?${params.toString()}`);
+    const res = await fetchUserApi(`activity-days?${params.toString()}`, {
+      headers: { 'x-timezone': timezone },
+    });
     const activities = res?.data || [];
     if (Array.isArray(activities)) {
       allActivities = [...allActivities, ...activities];
@@ -249,8 +252,11 @@ export const fetchActivityDays = async (from, to) => {
  * POST /v1/activity-days — add or update activity day.
  * @param {Object} payload — activity payload containing date, type, seconds, ranges, mushafId
  */
-export const postActivityDay = (payload) =>
-  fetchUserApi('activity-days', {
+export const postActivityDay = (payload) => {
+  const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  return fetchUserApi('activity-days', {
     method: 'POST',
+    headers: { 'x-timezone': timezone },
     body: JSON.stringify(payload),
   });
+};
