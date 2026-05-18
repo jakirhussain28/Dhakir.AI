@@ -82,7 +82,11 @@ export class ActivityCalculator {
    * @returns {string[]}      — e.g. ["2:1","2:2","2:3","2:4","2:5"]
    */
   static expandRange(rangeStr) {
+    if (!rangeStr) return [];
+    // Guard: if there's no hyphen, this is already a single verse key (e.g. "1:5")
+    if (!rangeStr.includes('-')) return [rangeStr];
     const [startPart, endPart] = rangeStr.split('-');
+    if (!endPart) return startPart ? [startPart] : [];
     const [sc, sv] = startPart.split(':').map(Number);
     const [ec, ev] = endPart.split(':').map(Number);
 

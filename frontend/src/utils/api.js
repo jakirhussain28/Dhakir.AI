@@ -233,10 +233,24 @@ export const fetchActivityDays = async (from, to) => {
     const res = await fetchUserApi(`activity-days?${params.toString()}`, {
       headers: { 'x-timezone': timezone },
     });
-    const activities = res?.data || [];
-    if (Array.isArray(activities)) {
-      allActivities = [...allActivities, ...activities];
+
+    // QF API may return { data: [...] } or { data: { activityDays: [...] } }
+    const rawData = res?.data;
+    let activities = [];
+    if (Array.isArray(rawData)) {
+      activities = rawData;
+    } else if (rawData && Array.isArray(rawData.activityDays)) {
+      activities = rawData.activityDays;
+    } else if (rawData && typeof rawData === 'object') {
+      // Fallback: pick the first array-valued property
+      const firstArr = Object.values(rawData).find(v => Array.isArray(v));
+      if (firstArr) activities = firstArr;
     }
+
+    console.log('[fetchActivityDays] page response shape:', JSON.stringify(res).slice(0, 400));
+    console.log('[fetchActivityDays] extracted activities count:', activities.length);
+
+    allActivities = [...allActivities, ...activities];
 
     const pagination = res?.pagination || {};
     hasNext = pagination.hasNextPage === true;

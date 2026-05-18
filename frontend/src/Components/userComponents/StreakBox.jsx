@@ -1,13 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { FaRegCircle, FaCircle } from "react-icons/fa";
 import { isAuthenticated } from '../../utils/auth';
-import { useStreakDays } from '../../hooks/useStreakDays';
 import { useLocalActivities, formatReadingTime } from '../../hooks/useLocalActivities';
 
 function StreakBox({ isLight, onClick }) {
     const [isLoggedIn, setIsLoggedIn] = useState(isAuthenticated());
-    const { streakDays } = useStreakDays();
-    const { todaySeconds } = useLocalActivities();
+    const { streakDays, todaySeconds } = useLocalActivities();
     const dailyGoal = 15; // 15 minutes daily reading goal
     const dailyGoalSeconds = dailyGoal * 60; // 900 seconds
 
