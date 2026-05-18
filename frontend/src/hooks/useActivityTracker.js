@@ -1,5 +1,7 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { getUserData, setUserData, USER_KEYS } from '../utils/userDb';
+import { isAuthenticated } from '../utils/auth';
+import { postActivityDay } from '../utils/api';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -108,6 +110,10 @@ export function useActivityTracker() {
   // the timer fires, we cancel the timer and don't count it.
   const dwellTimers = useRef(new Map());
 
+  // Unsynced data buffer for authenticated user API sync retries
+  const unsyncedSeconds = useRef(0);
+  const unsyncedKeys = useRef(new Set());
+
   // ── Second counter ─────────────────────────────────────────────────────────
   useEffect(() => {
     // Tick every 1 second, only counting when tab is focused
@@ -135,32 +141,60 @@ export function useActivityTracker() {
     const secs = pendingSeconds.current;
     const keys = pendingKeys.current;
 
-    // Nothing to save
-    if (secs === 0 && keys.size === 0) return;
+    const loggedIn = isAuthenticated();
 
-    // Snapshot & reset
-    const date = todayStr();
-    const newRanges = mergeKeysToRanges(keys);
-    pendingSeconds.current = 0;
-    pendingKeys.current = new Set();
+    // Reset pending
+    if (secs > 0 || keys.size > 0) {
+      pendingSeconds.current = 0;
+      pendingKeys.current = new Set();
 
-    try {
-      // Always target localUserDB (isLoggedIn = false)
-      const activities = (await getUserData(USER_KEYS.ACTIVITIES, false)) || [];
+      const date = todayStr();
+      const newRanges = mergeKeysToRanges(keys);
 
-      // Find today's entry
-      const idx = activities.findIndex((a) => a.date === date);
-      if (idx !== -1) {
-        // Accumulate seconds and merge ranges
-        activities[idx].seconds += secs;
-        activities[idx].ranges = mergeRangeArrays(activities[idx].ranges || [], newRanges);
-      } else {
-        activities.push({ date, seconds: secs, ranges: newRanges });
+      try {
+        // Local-first: Save to the correct IndexedDB immediately
+        const activities = (await getUserData(USER_KEYS.ACTIVITIES, loggedIn)) || [];
+        const idx = activities.findIndex((a) => a.date === date);
+        if (idx !== -1) {
+          activities[idx].seconds += secs;
+          activities[idx].ranges = mergeRangeArrays(activities[idx].ranges || [], newRanges);
+        } else {
+          activities.push({ date, seconds: secs, ranges: newRanges });
+        }
+        await setUserData(USER_KEYS.ACTIVITIES, activities, loggedIn);
+      } catch (err) {
+        console.error('[ActivityTracker] Local write failed:', err);
       }
 
-      await setUserData(USER_KEYS.ACTIVITIES, activities, false);
-    } catch (err) {
-      console.error('[ActivityTracker] flush failed:', err);
+      // If logged in, queue for server sync
+      if (loggedIn) {
+        unsyncedSeconds.current += secs;
+        keys.forEach(k => unsyncedKeys.current.add(k));
+      }
+    }
+
+    // Now, if logged in and we have unsynced data, attempt to sync with server
+    if (loggedIn && (unsyncedSeconds.current > 0 || unsyncedKeys.current.size > 0)) {
+      const syncSecs = unsyncedSeconds.current;
+      const syncKeys = new Set(unsyncedKeys.current);
+      const syncRanges = mergeKeysToRanges(syncKeys);
+      const date = todayStr();
+
+      try {
+        await postActivityDay({
+          date,
+          type: 'QURAN',
+          seconds: syncSecs,
+          ranges: syncRanges,
+          mushafId: 4
+        });
+        
+        // Success! Deduct successfully synced portion from buffer
+        unsyncedSeconds.current -= syncSecs;
+        syncKeys.forEach(k => unsyncedKeys.current.delete(k));
+      } catch (err) {
+        console.error('[ActivityTracker] Server sync failed (will retry in next flush):', err);
+      }
     }
   }, []);
 

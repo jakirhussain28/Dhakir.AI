@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { isAuthenticated } from '../utils/auth';
 import { fetchCurrentStreakDays } from '../utils/api';
-import { getUserData, USER_KEYS } from '../utils/userDb';
+import { getUserData, setUserData, USER_KEYS } from '../utils/userDb';
 
 /**
  * @returns {{ streakDays: number, loading: boolean }}
@@ -14,23 +14,28 @@ export function useStreakDays() {
     let cancelled = false;
 
     const load = async () => {
-      if (!isAuthenticated()) {
-        // Not logged in — fall back to local streak (stored in localUserDB)
-        const local = await getUserData(USER_KEYS.STREAK_DAYS, false);
-        if (!cancelled) setStreakDays(typeof local === 'number' ? local : 0);
-        return;
+      const loggedIn = isAuthenticated();
+
+      // Local-first: load immediately from the correct database
+      const cached = await getUserData(USER_KEYS.STREAK_DAYS, loggedIn);
+      if (!cancelled) {
+        setStreakDays(typeof cached === 'number' ? cached : 0);
       }
 
-      // Authenticated — fetch from the Quran Foundation API
-      setLoading(true);
-      try {
-        const days = await fetchCurrentStreakDays();
-        if (!cancelled) setStreakDays(days);
-      } catch (err) {
-        console.error('Failed to fetch streak days:', err);
-        // Keep current value (0) on error
-      } finally {
-        if (!cancelled) setLoading(false);
+      if (loggedIn) {
+        // Sync-second: fetch from API and update qfUserDB in background
+        setLoading(true);
+        try {
+          const days = await fetchCurrentStreakDays();
+          if (!cancelled) {
+            setStreakDays(days);
+            await setUserData(USER_KEYS.STREAK_DAYS, days, true);
+          }
+        } catch (err) {
+          console.error('Failed to fetch streak days:', err);
+        } finally {
+          if (!cancelled) setLoading(false);
+        }
       }
     };
 

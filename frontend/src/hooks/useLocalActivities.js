@@ -1,6 +1,8 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { getUserData, setUserData, USER_KEYS } from '../utils/userDb';
 import { ActivityCalculator } from '../utils/Activity_Streak_Calculator';
+import { isAuthenticated } from '../utils/auth';
+import { fetchActivityDays } from '../utils/api';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -112,6 +114,46 @@ export const buildCalendarData = (activities = []) => {
   return { months, todaySeconds, streakDays, activities };
 };
 
+/** Merge two arrays of range strings using ActivityCalculator. */
+const mergeRangeArrays = (arr1, arr2) => {
+  const keys = new Set();
+  arr1.forEach(r => ActivityCalculator.expandRange(r).forEach(k => keys.add(k)));
+  arr2.forEach(r => ActivityCalculator.expandRange(r).forEach(k => keys.add(k)));
+  return ActivityCalculator.compactRanges(Array.from(keys));
+};
+
+/** Merge server-side activities with local IndexedDB activities. */
+const mergeServerActivities = (localActivities, serverDays) => {
+  const today = todayStr();
+  const localMap = new Map(localActivities.map(a => [a.date, a]));
+
+  serverDays.forEach(sDay => {
+    const date = sDay.date;
+    const sSecs = sDay.secondsRead || sDay.seconds || 0;
+    const sRanges = sDay.ranges || [];
+
+    if (date === today) {
+      // Merge today's ranges and take max seconds to avoid losing active local progress
+      const localToday = localMap.get(today) || { date: today, seconds: 0, ranges: [] };
+      const mergedRanges = mergeRangeArrays(localToday.ranges || [], sRanges);
+      localMap.set(today, {
+        date: today,
+        seconds: Math.max(localToday.seconds, sSecs),
+        ranges: mergedRanges
+      });
+    } else {
+      // Overwrite past days with server truth
+      localMap.set(date, {
+        date,
+        seconds: sSecs,
+        ranges: sRanges
+      });
+    }
+  });
+
+  return Array.from(localMap.values());
+};
+
 // ── Hook ─────────────────────────────────────────────────────────────────────
 
 /**
@@ -135,13 +177,41 @@ export function useLocalActivities() {
     activities: [],
   });
   const [loading, setLoading] = useState(true);
+  const lastServerFetch = useRef(0);
 
   const load = useCallback(async () => {
     try {
       await ActivityCalculator.loadChapterNames();
-      const activities = (await getUserData(USER_KEYS.ACTIVITIES, false)) || [];
-      const result = buildCalendarData(activities);
-      setData(result);
+      const loggedIn = isAuthenticated();
+      
+      // Local-first: load immediately from correct store
+      const localActivities = (await getUserData(USER_KEYS.ACTIVITIES, loggedIn)) || [];
+      const initialResult = buildCalendarData(localActivities);
+      setData(initialResult);
+
+      // Sync-second: background API fetch, throttled to once every 60s
+      if (loggedIn) {
+        const nowMs = Date.now();
+        if (nowMs - lastServerFetch.current > 60_000) {
+          lastServerFetch.current = nowMs;
+
+          const now = new Date();
+          const fromDate = new Date(now.getFullYear(), now.getMonth() - 2, 1);
+          const fromStr = `${fromDate.getFullYear()}-${String(fromDate.getMonth() + 1).padStart(2, '0')}-01`;
+
+          try {
+            const serverDays = await fetchActivityDays(fromStr);
+            if (Array.isArray(serverDays) && serverDays.length > 0) {
+              const merged = mergeServerActivities(localActivities, serverDays);
+              await setUserData(USER_KEYS.ACTIVITIES, merged, true);
+              const finalResult = buildCalendarData(merged);
+              setData(finalResult);
+            }
+          } catch (syncErr) {
+            console.error('[useLocalActivities] background sync failed:', syncErr);
+          }
+        }
+      }
     } catch (err) {
       console.error('[useLocalActivities] failed to load:', err);
     } finally {
@@ -157,10 +227,11 @@ export function useLocalActivities() {
     return () => clearInterval(interval);
   }, [load]);
 
-  // Also update the streakDays in localUserDB so useStreakDays can read it
+  // Also update the streakDays in correct IndexedDB so useStreakDays can read it
   useEffect(() => {
     if (!loading) {
-      setUserData(USER_KEYS.STREAK_DAYS, data.streakDays, false).catch(() => { });
+      const loggedIn = isAuthenticated();
+      setUserData(USER_KEYS.STREAK_DAYS, data.streakDays, loggedIn).catch(() => { });
     }
   }, [data.streakDays, loading]);
 

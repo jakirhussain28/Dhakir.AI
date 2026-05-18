@@ -210,3 +210,47 @@ export const postReadingSession = (chapterNumber, verseNumber) =>
     method: 'POST',
     body: JSON.stringify({ chapterNumber, verseNumber }),
   });
+
+// ── Activity Days ────────────────────────────────────────────────────────────
+
+/**
+ * GET /v1/activity-days — fetch activity days, paginating automatically.
+ * @param {string} [from] — YYYY-MM-DD start date (inclusive)
+ * @param {string} [to] — YYYY-MM-DD end date (inclusive)
+ */
+export const fetchActivityDays = async (from, to) => {
+  let allActivities = [];
+  let cursor = null;
+  let hasNext = true;
+
+  while (hasNext) {
+    const params = new URLSearchParams({ type: 'QURAN', first: '20' });
+    if (from) params.set('from', from);
+    if (to) params.set('to', to);
+    if (cursor) params.set('after', cursor);
+
+    const res = await fetchUserApi(`activity-days?${params.toString()}`);
+    const activities = res?.data || [];
+    if (Array.isArray(activities)) {
+      allActivities = [...allActivities, ...activities];
+    }
+
+    const pagination = res?.pagination || {};
+    hasNext = pagination.hasNextPage === true;
+    cursor = pagination.endCursor || null;
+
+    if (!cursor) hasNext = false;
+  }
+
+  return allActivities;
+};
+
+/**
+ * POST /v1/activity-days — add or update activity day.
+ * @param {Object} payload — activity payload containing date, type, seconds, ranges, mushafId
+ */
+export const postActivityDay = (payload) =>
+  fetchUserApi('activity-days', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
