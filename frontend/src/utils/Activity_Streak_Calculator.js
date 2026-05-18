@@ -18,8 +18,10 @@ const todayStr = () => {
  */
 export const formatDetailedTime = (totalSeconds) => {
   if (!totalSeconds || totalSeconds <= 0) return '0 seconds';
-  const mins = Math.floor(totalSeconds / 60);
-  const secs = totalSeconds % 60;
+  // Round total seconds to 1 decimal place 
+  const roundedTotal = Math.round(totalSeconds * 10) / 10;
+  const mins = Math.floor(roundedTotal / 60);
+  const secs = Math.round((roundedTotal % 60) * 10) / 10;
   const parts = [];
   if (mins > 0) parts.push(`${mins} minute${mins !== 1 ? 's' : ''}`);
   if (secs > 0) parts.push(`${secs} second${secs !== 1 ? 's' : ''}`);
