@@ -5,8 +5,8 @@ import { IoIosArrowForward, IoMdArrowRoundForward } from "react-icons/io";
 import { logAnalyticsEvent } from '../firebase';
 import { getUserData, setUserData, USER_KEYS } from '../utils/userDb';
 import { isAuthenticated } from '../utils/auth';
+import { generateQuranGuidance } from '../utils/guidance';
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 const MAX_HISTORY = 20;
 
 const PLACEHOLDERS = [
@@ -93,15 +93,7 @@ export default function AiGuidance({ isLight, onGoToVerse }) {
         logAnalyticsEvent('ai_guidance_query', { prompt_length: trimmed.length });
 
         try {
-            const res = await fetch(`${API_BASE}/api/guidance`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ user_input: trimmed }),
-            });
-
-            if (!res.ok) throw new Error(`Server error: ${res.status}`);
-
-            const json = await res.json();
+            const json = await generateQuranGuidance(trimmed);
             const data = json.data ?? json;
             setResponse(data);
             setAnsweredPrompt(trimmed);
