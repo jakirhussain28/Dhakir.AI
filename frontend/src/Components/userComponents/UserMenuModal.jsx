@@ -204,7 +204,7 @@ const UserMenuModal = ({ isOpen, onClose, theme, initialView = 'menu' }) => {
                             </button>
                         ) : (
                             <button
-                                className={`w-full ${rowBase} rounded-3xl h-16 sm:h-20 px-4 sm:px-6 flex items-center justify-center transition-colors duration-300 focus:outline-none`}
+                                className={`w-full ${rowBase} rounded-3xl h-20 sm:h-22 px-4 sm:px-6 flex items-center justify-center transition-colors duration-300 focus:outline-none`}
                                 onClick={() => { initiateLogin(); onClose(); }}
                             >
                                 <div className="flex flex-col items-center gap-0.5">
@@ -212,7 +212,7 @@ const UserMenuModal = ({ isOpen, onClose, theme, initialView = 'menu' }) => {
                                         <TbLogin2 className={`w-5 h-5 sm:w-6 sm:h-6 ${textActive}`} />
                                         <span className={`text-sm sm:text-base font-medium ${textActive}`}>Log In</span>
                                     </div>
-                                    <span className={`text-[9.5px] sm:text-[11px] font-medium ${textActive}`}>Beta Version: Your reading history will be lost.<br />Use Local Mode to keep your data with all features.</span>
+                                    <span className={`text-[9.5px] sm:text-[11px] font-medium ${textActive}`}>Beta Version: Your online history won't transfer to the official app later. Keep using Local Mode to save your reading progress.</span>
                                 </div>
                             </button>
                         )}
