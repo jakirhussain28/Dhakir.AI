@@ -150,18 +150,18 @@ function DynamicBar({ chapters, selectedChapter, onSelect, onVerseJump, isMobile
           `}>
             <button
               onClick={(e) => { e.stopPropagation(); onInfoClick?.(); }}
-              className="mobile-nav-btn flex items-center justify-center gap-2 text-gray-300 hover:text-white transition-colors w-full h-full"
+              className="rounded-2xl bg-emerald-600 text-white hover:bg-emerald-600/80 active:scale-95 transition-all px-2 py-1 flex items-center justify-center gap-1.5 shrink-0 shadow-sm"
               aria-label="Info"
             >
               <HiOutlineInformationCircle size={22} />
-              <span className="text-sm font-medium">Info</span>
+              <span className="text-sm font-medium">Surah Info</span>
             </button>
 
-            <div className="w-[1px] h-5 bg-white/10 shrink-0"></div>
+            {/* <div className="w-[1px] h-5 bg-white/10 shrink-0"></div> */}
 
             <button
               onClick={(e) => { e.stopPropagation(); onSettingsClick?.(); }}
-              className="mobile-nav-btn flex items-center justify-center gap-2 text-gray-300 hover:text-white transition-colors w-full h-full"
+              className="mobile-nav-btn flex items-center justify-center gap-1 text-gray-300 hover:text-white transition-colors w-full h-full"
               aria-label="Settings"
             >
               <LuSettings size={18} />

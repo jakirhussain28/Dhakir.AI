@@ -169,10 +169,15 @@ const Header = ({
         {!isInitialScreen && (
           <button
             onClick={handleLogoClick}
-            className={`hidden md:flex p-1.5 rounded-full transition-colors ${isLight ? 'hover:bg-stone-300 text-stone-700' : 'hover:bg-gray-700 text-gray-300'}`}
+            className={`hidden md:flex items-center gap-1 px-2 py-1 rounded-2xl transition-all duration-200 active:scale-95 shadow-sm
+              ${isLight
+                ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                : 'bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 border border-emerald-500/30'
+              }`}
             aria-label="Surah Info"
           >
-            <HiOutlineInformationCircle size={28} aria-hidden="true" />
+            <HiOutlineInformationCircle size={22} aria-hidden="true" />
+            <span className="text-sm font-medium">Surah Info</span>
           </button>
         )}
         <button
