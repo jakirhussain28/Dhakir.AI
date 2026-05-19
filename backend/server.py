@@ -14,7 +14,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Import your function
-from Quran_Guide import generate_quran_guidance
+# from Quran_Guide import generate_quran_guidance
 
 app = FastAPI(
     title="Dhakir API",
@@ -38,8 +38,8 @@ app.add_middleware(
 )
 
 # --- REQUEST MODELS ---
-class GuidanceRequest(BaseModel):
-    user_input: str
+# class GuidanceRequest(BaseModel):
+#     user_input: str
 
 class AuthCallbackRequest(BaseModel):
     code: str
@@ -54,24 +54,24 @@ class RefreshTokenRequest(BaseModel):
 async def health_check():
     return "Health check is successful"
 
-@app.post("/api/guidance")
-async def get_guidance(request: GuidanceRequest):
-    try:
-        response_data = generate_quran_guidance(request.user_input)
-        
-        if isinstance(response_data, str):
-            try:
-                response_data = json.loads(response_data)
-            except json.JSONDecodeError:
-                pass 
-
-        return {
-            "status": "success",
-            "data": response_data
-        }
-
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
+# @app.post("/api/guidance")
+# async def get_guidance(request: GuidanceRequest):
+#     try:
+#         response_data = generate_quran_guidance(request.user_input)
+#         
+#         if isinstance(response_data, str):
+#             try:
+#                 response_data = json.loads(response_data)
+#             except json.JSONDecodeError:
+#                 pass 
+# 
+#         return {
+#             "status": "success",
+#             "data": response_data
+#         }
+# 
+#     except Exception as e:
+#         raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
 
 # NEW: OAuth2 Token Exchange Endpoint
 @app.post("/api/auth/callback")
