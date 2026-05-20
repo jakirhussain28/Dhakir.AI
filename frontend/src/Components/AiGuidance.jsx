@@ -383,7 +383,7 @@ export default function AiGuidance({ isLight, onGoToVerse }) {
                     )}
                 </div>
             )}
-            <span className={`text-xs text-right mr-2 ${isLight ? 'text-stone-400' : 'text-white/30'}`}>AI Powered by Puter.com</span>
+            <span className={`text-[10px] text-right mr-2 ${isLight ? 'text-stone-400' : 'text-white/30'}`}>AI Powered by Puter.com</span>
         </div>
     );
 }
