@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { IoSend, IoClose } from "react-icons/io5";
+import { IoSend, IoClose, IoShieldCheckmark } from "react-icons/io5";
 import { LuHistory, LuLoaderCircle } from "react-icons/lu";
 import { IoIosArrowForward, IoMdArrowRoundForward } from "react-icons/io";
 import { logAnalyticsEvent } from '../firebase';
@@ -50,6 +50,7 @@ export default function AiGuidance({ isLight, onGoToVerse }) {
     const [history, setHistory] = useState([]);
     const [showHistory, setShowHistory] = useState(false);
     const [expandedIdx, setExpandedIdx] = useState(null);
+    const [showAuthOverlay, setShowAuthOverlay] = useState(false);
 
     // Load history from IndexedDB on mount
     useEffect(() => {
@@ -84,6 +85,13 @@ export default function AiGuidance({ isLight, onGoToVerse }) {
         const trimmed = prompt.trim();
         if (!trimmed || loading) return;
         if (response && trimmed === answeredPrompt) return;
+
+        // Check puter authentication before proceeding
+        const puterAuth = window.puter?.auth;
+        if (!puterAuth || !puterAuth.isSignedIn || !(await puterAuth.isSignedIn())) {
+            setShowAuthOverlay(true);
+            return;
+        }
 
         setLoading(true);
         setError(null);
@@ -144,7 +152,59 @@ export default function AiGuidance({ isLight, onGoToVerse }) {
     const canSend = showSend && !loading;
 
     return (
-        <div className={`w-full max-w-sm sm:max-w-2xl rounded-2xl p-3 pb-2 flex flex-col gap-3 ${boxBg}`}>
+        <div className={`w-full max-w-sm sm:max-w-2xl rounded-2xl p-3 pb-2 flex flex-col gap-3 relative overflow-hidden ${boxBg} ${showAuthOverlay ? 'min-h-[220px]' : ''}`}>
+
+            {/* ── Puter Auth Overlay ── */}
+            {showAuthOverlay && (
+                <div className="absolute inset-0 z-30 flex items-center justify-center rounded-2xl"
+                    style={{ backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)' }}>
+                    {/* Backdrop */}
+                    <div className={`absolute inset-0 rounded-2xl ${isLight ? 'bg-white/80' : 'bg-black/70'}`} />
+                    {/* Content */}
+                    <div className="relative flex flex-col items-center gap-4 px-6 py-5 text-center">
+                        <div className={`w-12 h-12 rounded-full flex items-center justify-center ${isLight ? 'bg-emerald-100' : 'bg-emerald-900/40'}`}>
+                            <IoShieldCheckmark className={`w-6 h-6 ${isLight ? 'text-emerald-600' : 'text-emerald-400'}`} />
+                        </div>
+                        <div className="flex flex-col gap-1.5">
+                            <h3 className={`text-sm font-semibold ${isLight ? 'text-stone-800' : 'text-gray-100'}`}>
+                                Authentication Required
+                            </h3>
+                            <p className={`text-xs leading-relaxed max-w-[260px] ${isLight ? 'text-stone-500' : 'text-gray-400'}`}>
+                                You'll be redirected to <strong className={isLight ? 'text-stone-700' : 'text-gray-200'}>puter.com</strong> to sign in for the AI service.
+                            </p>
+                        </div>
+                        <div className="flex items-center gap-2.5">
+                            <button
+                                onClick={() => setShowAuthOverlay(false)}
+                                className={`text-xs font-medium px-4 py-2 rounded-xl transition-all duration-200 active:scale-95
+                                    ${isLight
+                                        ? 'bg-stone-100 hover:bg-stone-200 text-stone-600'
+                                        : 'bg-white/10 hover:bg-white/15 text-gray-300'
+                                    }`}
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={async () => {
+                                    try {
+                                        await window.puter.auth.signIn();
+                                        setShowAuthOverlay(false);
+                                    } catch (e) {
+                                        console.error('Puter sign-in failed:', e);
+                                    }
+                                }}
+                                className={`text-xs font-semibold px-4 py-2 rounded-xl transition-all duration-200 active:scale-95
+                                    ${isLight
+                                        ? 'bg-emerald-500 hover:bg-emerald-600 text-white shadow-sm hover:shadow-emerald-200 hover:shadow-md'
+                                        : 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-sm'
+                                    }`}
+                            >
+                                Proceed
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* ── Input row ── */}
             <div className="flex items-center gap-2">
