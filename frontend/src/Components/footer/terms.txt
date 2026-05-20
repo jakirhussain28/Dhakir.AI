@@ -1,0 +1,16 @@
+<title>1. Acceptance of Terms</title>
+<description>By accessing or using <bold>DHAKIR</bold>, you agree to be bound by these general Terms of Service and all applicable laws. DHAKIR provides an application platform designed for semantic document exploration, Quranic reading progress tracking, and AI-driven textual analysis.</description>
+
+<title>2. Service Architecture and App Modes</title>
+<description>DHAKIR offers two distinct operating environments for users:</description>
+<point><bold>Local Mode:</bold> Features are run client-side on your physical device. Storage relies completely on separate client-side databases (such as localUserDB).</point>
+<point><bold>Login Mode:</bold> Account authentication, user profiles, and unified cloud syncing are powered explicitly by the <bold>Quran Foundation</bold> ecosystem.</point>
+
+<title>3. Third-Party Registrations & Agreements</title>
+<description>When choosing to log in or register an account, you are creating a connection with the Quran Foundation infrastructure. Consequently, you explicitly agree to the Quran Foundation Terms of Service and their respective governing policies.</description>
+
+<title>4. AI Guidance Feature</title>
+<description>The AI Guidance module processes user text inputs to map queries to relevant verses or contextual analysis. In both Local and Login modes, your explicit input query or question is securely transmitted to an external third-party AI provider to process and receive the output. You agree not to submit sensitive personal data or malicious prompts into the generative AI engine.</description>
+
+<title>5. Termination & Account Deletion</title>
+<description>The App operates as a federated client within the unified Quran Foundation connected application ecosystem. Because your identity profile and authentication tokens are shared globally across multiple network services, a native "Delete Account" control is intentionally excluded from the <bold>DHAKIR</bold> app interface. This infrastructure guardrail is implemented to prevent users from inadvertently breaking credentials or corrupting data states across other synchronized client applications within the shared ecosystem.</description>

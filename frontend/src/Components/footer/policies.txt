@@ -1,0 +1,14 @@
+<title>1. Information Collected in Local Mode</title>
+<description>If you select Local Mode, your privacy is entirely sandboxed to your machine. All reading progress, last read verses, bookmarks, history, and preferences are saved locally on your device via client-side storage structures. This data is never shared with, processed by, or transmitted to <bold>DHAKIR</bold> app servers or any third parties.</description>
+
+<title>2. Information Collected in Login Mode</title>
+<description>When choosing to authenticate, secure user authentication is completed via OAuth2 protocols. Your identity tokens, access tokens, and profile synchronization are handled directly through server-to-server calls interacting with the Quran Foundation User API. Information handled during this session is subject to the privacy rules of the Quran Foundation network.</description>
+
+<title>3. Processing of Technical Data and IP Addresses</title>
+<description>To deliver core application services, manage API access, and maintain token exchange lifecycle security, infrastructure systems temporarily collect technical parameters including your IP address. This data is fundamentally processed to secure authentications and facilitate communication with global AI cloud endpoints.</description>
+
+<title>4. AI Feature Data Treatment</title>
+<description>While your local history of AI interactions remains stored within your app's local device parameters, whenever you invoke the AI guidance feature, your text question is sent directly to our downstream AI provider. This transmission is performed solely to compute and generate semantic answers or verse recommendations.</description>
+
+<title>5. General Provisions & Compliance</title>
+<description>We reserve the right to modify these policies to reflect changes in app functionality or regulatory baselines. Continued use of the service constitutes agreement to the updated versions.</description>

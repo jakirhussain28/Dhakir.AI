@@ -11,6 +11,19 @@ const TermsAndPolicies = ({ isOpen, onClose, type }) => {
         setContent(text);
     }, [isOpen, type]);
 
+    const parseContent = (text) => {
+        if (!text) return '';
+        return text
+            .replace(/<title>/g, '<h3 class="text-lg font-semibold mt-4 mb-2 dark:text-white text-black">')
+            .replace(/<\/title>/g, '</h3>')
+            .replace(/<description>/g, '<p class="mb-4">')
+            .replace(/<\/description>/g, '</p>')
+            .replace(/<bold>/g, '<strong class="font-semibold dark:text-white text-black">')
+            .replace(/<\/bold>/g, '</strong>')
+            .replace(/<point>/g, '<li class="ml-6 mb-2 list-disc">')
+            .replace(/<\/point>/g, '</li>');
+    };
+
     if (!isOpen) return null;
 
     return (
@@ -27,8 +40,10 @@ const TermsAndPolicies = ({ isOpen, onClose, type }) => {
                 </div>
 
                 {/* Content */}
-                <div className="flex-1 overflow-y-auto p-6 whitespace-pre-wrap dark:text-gray-300 text-gray-700 text-sm leading-relaxed">
-                    {content || 'Loading...'}
+                <div
+                    className="flex-1 overflow-y-auto p-6 dark:text-gray-300 text-gray-700 text-sm leading-relaxed"
+                    dangerouslySetInnerHTML={{ __html: content ? parseContent(content) : 'Loading...' }}
+                >
                 </div>
 
                 {/* Footer Action */}
