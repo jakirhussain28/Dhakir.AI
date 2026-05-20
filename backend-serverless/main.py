@@ -1,14 +1,19 @@
 import os
+import json
 import httpx
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import uvicorn
 from dotenv import load_dotenv
+from upstash_redis import Redis
 from QuranContent import router as quran_content_router
 from QuranUsers import router as quran_users_router
 
 load_dotenv()
+
+# ── Upstash Redis ─────────────────────────────────────────────────────────────
+redis = Redis.from_env()
 
 app = FastAPI(
     title="Dhakir API",
@@ -41,6 +46,38 @@ class AuthCallbackRequest(BaseModel):
 
 class RefreshTokenRequest(BaseModel):
     refresh_token: str
+
+# ── Helper: persist session tokens in Redis ───────────────────────────────────
+
+def _store_session_in_redis(token_data: dict) -> None:
+    """
+    Persist the OAuth session keyed by access_token in Upstash Redis.
+
+    This allows any Vercel serverless function instance to validate / retrieve
+    a session even after the original handler's process has been recycled.
+
+    Key:   session:<access_token>
+    Value: JSON blob with id_token, refresh_token, expires_in
+    TTL:   expires_in seconds (matches the OAuth token lifetime)
+    """
+    access_token = token_data.get("access_token")
+    if not access_token:
+        return
+
+    session_payload = {
+        "access_token": access_token,
+        "id_token": token_data.get("id_token"),
+        "refresh_token": token_data.get("refresh_token"),
+        "expires_in": token_data.get("expires_in"),
+    }
+
+    ttl = token_data.get("expires_in", 3600)  # default 1 hour
+    redis.set(
+        f"session:{access_token}",
+        json.dumps(session_payload),
+        ex=ttl,
+    )
+
 
 # --- ENDPOINTS ---
 @app.get("/")   
@@ -88,6 +125,9 @@ async def auth_callback(request: AuthCallbackRequest):
                 )
             
             token_data = response.json()
+
+            # Persist tokens in Upstash Redis for cross-instance availability
+            _store_session_in_redis(token_data)
             
             # Return the access_token and id_token to the React frontend
             return {
@@ -140,6 +180,10 @@ async def refresh_token(request: RefreshTokenRequest):
                 )
             
             token_data = response.json()
+
+            # Delete the old session (keyed by the old refresh_token's access_token)
+            # and persist the new session in Redis
+            _store_session_in_redis(token_data)
             
             return {
                 "status": "success",

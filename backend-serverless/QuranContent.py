@@ -1,18 +1,34 @@
 import os
 import asyncio
 import time
+import json
 import httpx
 from fastapi import APIRouter, HTTPException, Request
+from upstash_redis import Redis
+from dotenv import load_dotenv
+
+load_dotenv()
 
 router = APIRouter()
 
+# ── Upstash Redis ─────────────────────────────────────────────────────────────
+redis = Redis.from_env()
+
 # ── Quran Foundation Content API Token Management ─────────────────────────────
+
+# Redis key for the cached client-credentials token
+_CONTENT_TOKEN_KEY = "qf:content_token"
 
 class QfTokenCache:
     """
-    Thread-safe (asyncio) cache for a Quran Foundation Client Credentials token.
-    Stores only the token string and its absolute expiry timestamp; all other
-    state is internal and never leaked to callers.
+    Manages a Quran Foundation Client Credentials token with Upstash Redis
+    persistence.
+
+    On Vercel serverless, each invocation may run in a fresh container. By
+    storing the token and its expiry in Redis, we avoid fetching a new token
+    on every cold start — the token survives across function instances.
+
+    In-memory state is used as a fast L1 cache; Redis is the durable L2.
     """
 
     def __init__(self):
@@ -27,21 +43,41 @@ class QfTokenCache:
         """Invalidate the cached token (called after a 401 from the Content API)."""
         self._token = None
         self._expires_at = 0.0
+        # Also clear from Redis so other instances don't use a stale token
+        try:
+            redis.delete(_CONTENT_TOKEN_KEY)
+        except Exception:
+            pass  # Redis unavailable — degrade gracefully
 
     async def get_access_token(self) -> str:
         """
         Return a valid access token, fetching a new one when needed.
 
-        Fast path (no lock): return the cached token if it is still valid
-        for more than 30 seconds.
+        1. Check in-memory L1 cache (fast path, no network).
+        2. Check Redis L2 cache (survives cold starts).
+        3. Request a fresh token from Quran Foundation OAuth2 (slow path).
 
-        Slow path (under lock): double-check, then request a fresh token.
         Only one coroutine at a time enters the slow path, so concurrent
         callers never trigger a token stampede.
         """
-        # Fast path — avoid lock overhead for the common case
+        # Fast path — in-memory cache
         if self._token and time.time() < self._expires_at - 30:
             return self._token
+
+        # Check Redis L2 cache before acquiring the lock
+        try:
+            cached = redis.get(_CONTENT_TOKEN_KEY)
+            if cached:
+                data = json.loads(cached)
+                token = data.get("access_token")
+                expires_at = data.get("expires_at", 0)
+                if token and time.time() < expires_at - 30:
+                    # Populate L1 from Redis
+                    self._token = token
+                    self._expires_at = expires_at
+                    return token
+        except Exception:
+            pass  # Redis unavailable — fall through to fetch
 
         # Slow path — at most one coroutine fetches a new token
         async with self._lock:
@@ -72,6 +108,21 @@ class QfTokenCache:
             self._token = data["access_token"]
             # Store absolute expiry; never store expires_in beyond this point
             self._expires_at = time.time() + data["expires_in"]
+
+            # Persist to Redis L2 so other serverless instances can reuse
+            try:
+                ttl = int(data["expires_in"])
+                redis.set(
+                    _CONTENT_TOKEN_KEY,
+                    json.dumps({
+                        "access_token": self._token,
+                        "expires_at": self._expires_at,
+                    }),
+                    ex=ttl,
+                )
+            except Exception:
+                pass  # Redis unavailable — token still works from L1
+
             return self._token  # type: ignore[return-value]
 
 
