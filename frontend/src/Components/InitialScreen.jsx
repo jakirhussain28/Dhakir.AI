@@ -3,7 +3,7 @@ import { IoMdArrowRoundForward } from "react-icons/io";
 import StreakBox from './userComponents/StreakBox';
 import BookmarksBox from './userComponents/BookmarksBox';
 import ContinueReadingBox from './userComponents/ContinueReadingBox';
-import Footer from './Footer';
+import Footer from './footer/Footer';
 import AiGuidance from './AiGuidance';
 
 /* ── SHARED CARD BUTTON ────────────────────────────────────────── */
