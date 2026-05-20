@@ -13,10 +13,7 @@ function Callback() {
     const theme = localStorage.getItem('app-theme') || 'light';
     const isLight = theme === 'light';
 
-    // Use localhost backend when on localhost to avoid CORS issues with LAN IP
-    const BACKEND_API_URL = window.location.hostname === 'localhost'
-        ? 'http://localhost:8000'
-        : (import.meta.env.VITE_API_URL || 'http://localhost:8000');
+    const BACKEND_API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
     useEffect(() => {
         // Prevent React strict mode double-firing

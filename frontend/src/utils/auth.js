@@ -8,9 +8,7 @@ const REDIRECT_URI = window.location.origin.includes('localhost')
     ? 'http://localhost:5010/callback' // Matches your Vite port
     : 'https://dhakir.pages.dev/callback';
 
-const BACKEND_API_URL = window.location.hostname === 'localhost'
-    ? 'http://localhost:8000'
-    : (import.meta.env.VITE_API_URL || 'http://localhost:8000');
+const BACKEND_API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 // 1. Generate a random secure string
 const generateRandomString = (length) => {
