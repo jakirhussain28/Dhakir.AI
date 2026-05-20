@@ -144,7 +144,7 @@ export default function AiGuidance({ isLight, onGoToVerse }) {
     const canSend = showSend && !loading;
 
     return (
-        <div className={`w-full max-w-sm sm:max-w-2xl rounded-2xl p-4 flex flex-col gap-3 ${boxBg}`}>
+        <div className={`w-full max-w-sm sm:max-w-2xl rounded-2xl p-3 pb-2 flex flex-col gap-3 ${boxBg}`}>
 
             {/* ── Input row ── */}
             <div className="flex items-center gap-2">
@@ -323,6 +323,7 @@ export default function AiGuidance({ isLight, onGoToVerse }) {
                     )}
                 </div>
             )}
+            <span className={`text-xs text-right mr-2 ${isLight ? 'text-stone-400' : 'text-white/30'}`}>AI Powered by Puter.com</span>
         </div>
     );
 }
