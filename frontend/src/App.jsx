@@ -77,6 +77,12 @@ function App() {
   // Track whether initial load from IndexedDB is done
   const [userDbReady, setUserDbReady] = useState(false);
 
+  // Guard: only persist local bookmarks after they've actually been loaded from
+  // localUserDB.  This prevents the persist-effect from writing an empty []
+  // into localUserDB while the user is logged in (which would wipe saved local
+  // bookmarks on next logout).
+  const localBookmarksLoaded = useRef(false);
+
   // ── PERSIST APP PREFERENCES (localStorage — theme-level, not user data) ──
   useEffect(() => { localStorage.setItem('app-theme', theme); }, [theme]);
   useEffect(() => { localStorage.setItem('app-showTranslation', showTranslation); }, [showTranslation]);
@@ -125,6 +131,9 @@ function App() {
       if (!isAuth) {
         // LOCAL mode — populate localBookmarks from localUserDB
         setLocalBookmarks(Array.isArray(savedBookmarks) ? savedBookmarks : []);
+        localBookmarksLoaded.current = true;
+      } else {
+        localBookmarksLoaded.current = false;
       }
       // (Online bookmarks are fetched from the API — see separate effect)
 
@@ -165,7 +174,7 @@ function App() {
 
   // Persist LOCAL bookmarks to localUserDB (online bookmarks live on the server)
   useEffect(() => {
-    if (userDbReady) {
+    if (userDbReady && localBookmarksLoaded.current) {
       setUserData(USER_KEYS.BOOKMARKS, localBookmarks, false);
     }
   }, [localBookmarks, userDbReady]);
