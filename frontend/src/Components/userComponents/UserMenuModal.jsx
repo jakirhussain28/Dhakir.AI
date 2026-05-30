@@ -26,7 +26,7 @@ const UserMenuModal = ({ isOpen, onClose, theme, initialView = 'menu' }) => {
         }
     }, [isOpen, initialView]);
 
-    // Load QF user profile from IndexedDB instantly, and also refresh from API in background
+    // Load QF user profile from IndexedDB cache (App.jsx already fetches & caches on login/refresh)
     useEffect(() => {
         if (!isOpen) return;
 
@@ -38,23 +38,21 @@ const UserMenuModal = ({ isOpen, onClose, theme, initialView = 'menu' }) => {
             setProfileError(null);
 
             try {
-                // 1. Try to load instantly from IndexedDB
+                // Load from IndexedDB — already cached by App.jsx on login/refresh
                 const cachedProfile = await getUserData(USER_KEYS.PROFILE, true);
                 if (cachedProfile) {
                     setUserProfile(cachedProfile);
-                    setProfileLoading(false); // Stop loading spinner if we have cached data
-                }
-
-                // 2. Fetch fresh data from API in background
-                const data = await fetchUserProfile();
-                const freshProfile = data?.data ?? data;
-                if (freshProfile) {
-                    setUserProfile(freshProfile);
-                    await setUserData(USER_KEYS.PROFILE, freshProfile, true);
+                } else {
+                    // Fallback: fetch from API only if no cached data exists
+                    const data = await fetchUserProfile();
+                    const freshProfile = data?.data ?? data;
+                    if (freshProfile) {
+                        setUserProfile(freshProfile);
+                        await setUserData(USER_KEYS.PROFILE, freshProfile, true);
+                    }
                 }
             } catch (err) {
-                console.error('Failed to fetch user profile:', err);
-                // Only show error if we didn't have cached data
+                console.error('Failed to load user profile:', err);
                 setUserProfile((prev) => {
                     if (!prev) setProfileError('Could not load profile.');
                     return prev;

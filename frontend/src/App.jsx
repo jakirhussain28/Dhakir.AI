@@ -181,6 +181,7 @@ function App() {
 
   // ── FETCH ONLINE BOOKMARKS when logged in ──────────────────────────────────
   const hasFetchedOnlineBookmarks = useRef(false);
+  const hasFetchedProfile = useRef(false);
 
   useEffect(() => {
     if (!loggedIn) {
@@ -218,22 +219,30 @@ function App() {
 
   // ── FETCH USER PROFILE when logged in ──────────────────────────────────────
   useEffect(() => {
-    if (!loggedIn) return;
+    if (!loggedIn) {
+      hasFetchedProfile.current = false;
+      return;
+    }
+
+    if (hasFetchedProfile.current) return;
     
     let retryCount = 0;
     const maxRetries = 3;
     let timeoutId;
+    let cancelled = false;
 
     const loadProfile = async () => {
       try {
         const data = await fetchUserProfile();
+        if (cancelled) return;
         const profileData = data?.data ?? data;
         if (profileData) {
           setUserData(USER_KEYS.PROFILE, profileData, true);
         }
+        hasFetchedProfile.current = true;
       } catch (err) {
         console.error(`Failed to fetch and save user profile (attempt ${retryCount + 1}):`, err);
-        if (retryCount < maxRetries) {
+        if (retryCount < maxRetries && !cancelled) {
           retryCount++;
           // Exponential backoff: 2s, 4s, 6s
           timeoutId = setTimeout(loadProfile, 2000 * retryCount); 
@@ -243,7 +252,7 @@ function App() {
 
     loadProfile();
 
-    return () => clearTimeout(timeoutId);
+    return () => { cancelled = true; clearTimeout(timeoutId); };
   }, [loggedIn]);
 
 
