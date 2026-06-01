@@ -18,6 +18,7 @@ const cleanVerseData = (data, scriptType) => {
       let text = verse[scriptType];
       text = text.replace(/\u0652/g, '\u06e1'); 
       text = text.replace(/\u06df/g, '\u0652'); 
+      text = text.replace(/\u064d\u06ed/g, '\u0650\u06e2');
       verse[scriptType] = text;
     }
 
