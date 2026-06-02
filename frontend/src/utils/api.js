@@ -18,7 +18,15 @@ const cleanVerseData = (data, scriptType) => {
       let text = verse[scriptType];
       text = text.replace(/\u0652/g, '\u06e1'); 
       text = text.replace(/\u06df/g, '\u0652'); 
-      text = text.replace(/\u064d\u06ed/g, '\u0650\u06e2');
+      text = text.replace(/\u0629\u064d\u06ed/g, '\u0629\u06ed\u0650'); // 104:9, 80:14 or same 
+      text = text.replace(/\u0651\u064c\u06e2/g, '\u0651\u064f\u06e2'); //2:18 or same
+      text = text.replace(/\u0645\u064d\u06ed/g, '\u0645\u0650\u06ed');  //80:16 or same , middle meem changes to end meem, due to calt in font design
+      text = text.replace(/\u064c\u06e2/g, '\u064f\u06e2'); //2:19, 2:68, 2:88 or same
+      text = text.replace(/\u064d\u06ed/g, '\u06ed\u0650');
+
+      // text = text.replace(/\u06ed/g, '\u202f\u06ed'); // ARABIC SMALL LOW MEEM
+      // text = text.replace(/\u06e2/g, '\u202f\u06e2'); // ARABIC SMALL HIGH MEEM ISOLATED FORM
+
       verse[scriptType] = text;
     }
 
