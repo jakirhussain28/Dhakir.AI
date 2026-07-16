@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, lazy, Suspense, useCallback } from 'react'
 import VerseList from './Components/VerseList';
 import Header from './Components/Header';
 import InitialScreen from './Components/InitialScreen';
+import Announcement from './Components/userComponents/Announcement';
 import { fetchWithCache, DB_STORES } from './utils/db';
 import { fetchChapters, fetchVerses, fetchCollectionBookmarks, addCollectionBookmark, deleteCollectionBookmark, fetchUserProfile } from './utils/api';
 import { setupTokenRefresh, isAuthenticated } from './utils/auth';
@@ -659,7 +660,7 @@ function App() {
   const mainBgClass = isLight ? 'bg-[#f5f5f0] text-[#2b2b2b]' : 'bg-[rgb(22,22,24)] text-[rgb(252,252,252)]';
 
   return (
-    <div className={`flex h-screen font-sans overflow-hidden transition-colors duration-300 ${mainBgClass}`}>
+    <div className={`flex flex-col h-screen font-sans overflow-hidden transition-colors duration-300 ${mainBgClass}`}>
       {/* Splash Screen for Mobile/Tablet */}
       {showSplash && (
         <div className={`fixed inset-0 z-[100] flex flex-col items-center justify-center ${mainBgClass} transition-opacity duration-300 ease-in-out ${isFadingOut ? 'opacity-0' : 'opacity-100'}`}>
@@ -674,74 +675,78 @@ function App() {
         </div>
       )}
 
-      <Header
-        theme={theme}
-        audioStatus={audioStatus}
-        handleGlobalAudioClick={handleGlobalAudioClick}
-        handleLogoClick={handleLogoClick}
-        onHomeClick={handleHomeClick}
-        loadingChapters={loadingChapters}
-        selectedChapter={selectedChapter}
-        chapters={chapters}
-        handleChapterSelect={handleChapterSelect}
-        handleVerseJump={handleVerseJump}
-        setIsSettingsOpen={setIsSettingsOpen}
-        isUserMenuOpen={isUserMenuOpen}
-        setIsUserMenuOpen={setIsUserMenuOpen}
-        userMenuView={userMenuView}
-        setUserMenuView={setUserMenuView}
-        isInitialScreen={!selectedChapter || isHomeView}
-      />
+      {(!selectedChapter || isHomeView) && <Announcement />}
 
-      <main className="flex-1 h-full flex flex-col overflow-hidden relative">
-        {/* Show initial screen when no chapter selected OR user pressed Home */}
-        {(!selectedChapter || isHomeView) ? (
-          <InitialScreen
-            theme={theme}
-            lastChapter={selectedChapter}
-            onContinue={handleContinueReading}
-            loadingChapters={loadingChapters}
-            isLoggedIn={loggedIn}
-            bookmarks={bookmarks}
-            onGoToBookmark={handleGoToBookmark}
-            onRemoveBookmark={handleRemoveBookmark}
-            onGoToVerse={handleGoToVerse}
-            chapters={chapters}
-            onOpenActivity={() => {
-              setUserMenuView('activity');
-              setIsUserMenuOpen(true);
-            }}
-          />
-        ) : (
-          <VerseList
-            verses={verses}
-            loading={loadingVerses}
-            page={page}
-            setPage={setPage}
-            totalPages={totalPages}
-            scrollRef={contentTopRef}
-            theme={theme}
-            showTranslation={showTranslation}
-            showTransliteration={showTransliteration}
-            onlyTranslation={onlyTranslation}
-            fontSize={fontSize}
-            onAudioStatusChange={setAudioStatus}
-            registerStopHandler={(handler) => stopAudioTrigger.current = handler}
-            selectedChapter={selectedChapter}
-            onChapterNavigate={handleChapterSelect}
-            onChapterEnd={handleChapterEnd}
-            shouldAutoPlay={shouldAutoPlay}
-            setShouldAutoPlay={setShouldAutoPlay}
-            targetVerse={targetVerse}
-            setTargetVerse={setTargetVerse}
-            startPage={startPage}
-            onLoadPrevious={handleLoadPrevious}
-            loadingTop={loadingTop}
-            bookmarks={bookmarks}
-            onToggleBookmark={handleToggleBookmark}
-          />
-        )}
-      </main>
+      <div className="flex-1 flex flex-col relative overflow-hidden w-full">
+        <Header
+          theme={theme}
+          audioStatus={audioStatus}
+          handleGlobalAudioClick={handleGlobalAudioClick}
+          handleLogoClick={handleLogoClick}
+          onHomeClick={handleHomeClick}
+          loadingChapters={loadingChapters}
+          selectedChapter={selectedChapter}
+          chapters={chapters}
+          handleChapterSelect={handleChapterSelect}
+          handleVerseJump={handleVerseJump}
+          setIsSettingsOpen={setIsSettingsOpen}
+          isUserMenuOpen={isUserMenuOpen}
+          setIsUserMenuOpen={setIsUserMenuOpen}
+          userMenuView={userMenuView}
+          setUserMenuView={setUserMenuView}
+          isInitialScreen={!selectedChapter || isHomeView}
+        />
+
+        <main className="flex-1 h-full flex flex-col overflow-hidden relative">
+          {/* Show initial screen when no chapter selected OR user pressed Home */}
+          {(!selectedChapter || isHomeView) ? (
+            <InitialScreen
+              theme={theme}
+              lastChapter={selectedChapter}
+              onContinue={handleContinueReading}
+              loadingChapters={loadingChapters}
+              isLoggedIn={loggedIn}
+              bookmarks={bookmarks}
+              onGoToBookmark={handleGoToBookmark}
+              onRemoveBookmark={handleRemoveBookmark}
+              onGoToVerse={handleGoToVerse}
+              chapters={chapters}
+              onOpenActivity={() => {
+                setUserMenuView('activity');
+                setIsUserMenuOpen(true);
+              }}
+            />
+          ) : (
+            <VerseList
+              verses={verses}
+              loading={loadingVerses}
+              page={page}
+              setPage={setPage}
+              totalPages={totalPages}
+              scrollRef={contentTopRef}
+              theme={theme}
+              showTranslation={showTranslation}
+              showTransliteration={showTransliteration}
+              onlyTranslation={onlyTranslation}
+              fontSize={fontSize}
+              onAudioStatusChange={setAudioStatus}
+              registerStopHandler={(handler) => stopAudioTrigger.current = handler}
+              selectedChapter={selectedChapter}
+              onChapterNavigate={handleChapterSelect}
+              onChapterEnd={handleChapterEnd}
+              shouldAutoPlay={shouldAutoPlay}
+              setShouldAutoPlay={setShouldAutoPlay}
+              targetVerse={targetVerse}
+              setTargetVerse={setTargetVerse}
+              startPage={startPage}
+              onLoadPrevious={handleLoadPrevious}
+              loadingTop={loadingTop}
+              bookmarks={bookmarks}
+              onToggleBookmark={handleToggleBookmark}
+            />
+          )}
+        </main>
+      </div>
 
       <Suspense fallback={null}>
         {isSettingsOpen && (
