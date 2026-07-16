@@ -57,7 +57,7 @@ const Header = ({
   return (
     <div
       ref={headerRef}
-      className={`fixed top-2 md:bottom-auto md:top-2 left-1/2 -translate-x-1/2 z-50 w-[95%] md:w-[90%] max-w-4xl rounded-3xl
+      className={`absolute top-2 md:bottom-auto md:top-2 left-1/2 -translate-x-1/2 z-50 w-[95%] md:w-[90%] max-w-4xl rounded-3xl
                     bg-white/10 dark:bg-neutral-600/50 
                     backdrop-blur-sm backdrop-saturate-150
                     border border-white/20 dark:border-white/10
